@@ -126,7 +126,7 @@ def assert_settings_ok():
     # Check that the public interfaces are public IP addresses, raise a warning otherwise
     for ip in settings.PUBLIC_INTERFACES:
         try:
-            if check_ip_address_type(ip, "PUBLIC"):
+            if not check_ip_address_type(ip, "PUBLIC"):
                 printerr("Warning: IP address '%s' from the public interfaces is not a public IP address. Proceed with caution." % ip)
         except ValueError:
             pass
@@ -206,7 +206,7 @@ def assert_settings_ok():
 ########################################################################################################################
 
 
-def _check_all_ips_correct(list, name):
-    for ip in list:
+def _check_all_ips_correct(ip_list, name):
+    for ip in ip_list:
         if not is_valid_ip_string(ip):
             printerr("Warning: IP address '%s' from %s is not a valid IPv4 address." % (ip, name))
