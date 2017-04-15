@@ -1,0 +1,35 @@
+PRIVATE_INTERFACES = [
+    "10.0.0.1",
+    "192.168.0.1",
+]
+
+PUBLIC_INTERFACES = [
+    "80.102.236.61",
+]
+
+ALLOW_VERSION_0 = True
+ALLOW_VERSION_1 = True
+
+ALLOW_TLS_IN_V1 = True
+FORCE_TLS_IN_V1 = False
+STRICT_CERTIFICATE_CHECKING = True
+
+MIN_ALLOWED_MAPPABLE_PORT = 1000
+MAX_ALLOWED_MAPPABLE_PORT = 8000
+
+MIN_ALLOWED_LIFETIME = 60  # Seconds
+MAX_ALLOWED_LIFETIME = 3600  # Seconds
+
+FIXED_LIFETIME = None  # In seconds, set to a value to force all mappings lifetime to this value
+
+BLACKLIST_MODE = False
+BLACKLISTED_IPS = [
+    "10.0.13.37",
+    "192.168.10.12",
+]
+
+WHITELIST_MODE = False
+WHITELISTED_IPS = [
+    "10.14.33.12",
+    "192.168.55.123",
+]
