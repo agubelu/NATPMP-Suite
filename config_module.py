@@ -1,4 +1,4 @@
-from common_utils import is_valid_ip_string, printerr
+from common_utils import is_valid_ip_string, printerr, check_ip_address_type
 
 import settings
 import argparse
@@ -108,12 +108,28 @@ def assert_settings_ok():
     # Check that the private interfaces are all valid IP addresses
     _check_all_ips_correct(settings.PRIVATE_INTERFACES, "private interfaces")
 
+    # Check that the private interfaces are private IP addresses, raise a warning otherwise
+    for ip in settings.PRIVATE_INTERFACES:
+        try:
+            if not check_ip_address_type(ip, "PRIVATE"):
+                printerr("Warning: IP address '%s' from the private interfaces is not a private IP address. Proceed with caution." % ip)
+        except ValueError:
+            pass
+
     # Check that there is at least 1 public interface
     if settings.PUBLIC_INTERFACES is None or len(settings.PUBLIC_INTERFACES) < 1:
         sys.exit("Error: must specify at least 1 public interface to map ports into.")
 
     # Check that the public interfaces are all valid IP addresses
     _check_all_ips_correct(settings.PUBLIC_INTERFACES, "public interfaces")
+
+    # Check that the public interfaces are public IP addresses, raise a warning otherwise
+    for ip in settings.PUBLIC_INTERFACES:
+        try:
+            if check_ip_address_type(ip, "PUBLIC"):
+                printerr("Warning: IP address '%s' from the public interfaces is not a public IP address. Proceed with caution." % ip)
+        except ValueError:
+            pass
 
     # Check that at least one of the versions of the protocol is enabled
     if not settings.ALLOW_VERSION_0 and not settings.ALLOW_VERSION_1:
@@ -131,6 +147,59 @@ def assert_settings_ok():
     if settings.FORCE_TLS_IN_V1 and not settings.ALLOW_TLS_IN_V1:
         printerr("Warning: Force TLS is enabled but TLS itself is not. This configuration parameter will have no effect.")
 
+    # Raise a warning if strict certs are enabled but version 1 isn't
+    if settings.STRICT_CERTIFICATE_CHECKING and not settings.ALLOW_VERSION_1:
+        printerr("Warning: Strict certificate checking is enabled but version 1 itself is not. This configuration parameter will have no effect.")
+
+    # Raise a warning if strict certs are enabled but TLS isn't
+    if settings.STRICT_CERTIFICATE_CHECKING and not settings.ALLOW_TLS_IN_V1:
+        printerr("Warning: Strict certificate checking is enabled but version TLS itself is not. This configuration parameter will have no effect.")
+
+    # Raise a warning if the minimum allowed port is less than 1
+    if settings.MIN_ALLOWED_MAPPABLE_PORT < 1:
+        printerr("Warning: Minimum mappable port is less than 1. This will have no special effect other than being the same as setting it to 1.")
+
+    # Raise a warning if the maximum allowed port is greater than 65535
+    if settings.MAX_ALLOWED_MAPPABLE_PORT > 65535:
+        printerr("Warning: Maximum mappable port is greater than 65535. This will have no special effect other than being the same as setting it to 65535.")
+
+    # Check that the minimum mappable port is not greater than the maximum
+    if settings.MIN_ALLOWED_MAPPABLE_PORT > settings.MAX_ALLOWED_MAPPABLE_PORT:
+        sys.exit("Error: The minimum mappable port cannot be greater than the maximum one.")
+
+    # Check that the minimum allowed lifetime is a positive number
+    if settings.MIN_ALLOWED_LIFETIME <= 0:
+        sys.exit("Error: The minimum allowed lifetime must be a positive integer.")
+
+    # Check that the maximum allowed lifetime is a positive number
+    if settings.MAX_ALLOWED_LIFETIME <= 0:
+        sys.exit("Error: The maximum allowed lifetime must be a positive integer.")
+
+    # Check that the minimum allowed lifetime is not greater than the maximum
+    if settings.MIN_ALLOWED_LIFETIME > settings.MAX_ALLOWED_LIFETIME:
+        sys.exit("Error: The minimum allowed lifetime cannot be greater than the maximum.")
+
+    # Check that, if it's set, the fixed lifetime is a positive integer:
+    if settings.FIXED_LIFETIME is not None and settings.FIXED_LIFETIME <= 0:
+        sys.exit("Error: The fixed lifetime amount must be a positive integer.")
+
+    # Check that the blacklist and whitelist mode are not active at the same time
+    if settings.BLACKLIST_MODE and settings.WHITELIST_MODE:
+        sys.exit("Error: cannot operate under both the whitelist and the blacklist mode at the same time.")
+
+    # If we are operating under blacklist mode, check that it's set and all IP addresses are correct
+    if settings.BLACKLIST_MODE:
+        if settings.BLACKLISTED_IPS is None or len(settings.BLACKLISTED_IPS) == 0:
+            printerr("Warning: Blacklist mode is activated but the blacklist is empty. This will result in accepting all requests from any client.")
+        else:
+            _check_all_ips_correct(settings.BLACKLISTED_IPS, "the blacklist")
+
+    # If we are operating under whitelist mode, check that it's set and all IP addresses are correct
+    if settings.WHITELIST_MODE:
+        if settings.WHITELISTED_IPS is None or len(settings.WHITELISTED_IPS) == 0:
+            printerr("Warning: Whitelist mode is activated but the whitelist is empty. This will result in denying all requests from every client.")
+        else:
+            _check_all_ips_correct(settings.BLACKLISTED_IPS, "the whitelist")
 
 ########################################################################################################################
 ########################################################################################################################
