@@ -1,6 +1,14 @@
-from IPy import IP
+from IPy        import IP
+from datetime   import datetime
+
 import ipaddress
 import sys
+
+
+# Prints a string to the standard output, adding a timestamp for logging purposes
+def printlog(string):
+    time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print("[%s] %s" % (time_str, string))
 
 
 # Prints a string to the stderr output with a trailing newline.
