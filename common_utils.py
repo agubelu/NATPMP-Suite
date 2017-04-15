@@ -28,8 +28,8 @@ def is_valid_ip_string(param):
 
 
 # Returns True if the parameter represents a private IPv4 address, True if it's public, and raises ValueError if it's not a valid address.
-def check_ip_address_type(param, type):
+def check_ip_address_type(param, iptype):
     if not is_valid_ip_string(param):
         raise ValueError
 
-    return IP(param).iptype() == type
+    return IP(param).iptype() == iptype
