@@ -38,4 +38,4 @@ def initialize_network_sockets():
 
 
 def send_udp_response(bytedata, address, sock):
-    sock.sendto(bytedata, (address, NATPMP_PORT))
+    sock.sendto(bytedata, address)

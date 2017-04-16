@@ -22,7 +22,7 @@ def process_received_packet(data, address, sock):
 
     print("Request data: " + str(request_data))
 
-    response_bytes = bytes()
+    response_bytes = bytearray()
 
     response_bytes += (0).to_bytes(1, 'big')
     response_bytes += (request_data["opcode"] + 128).to_bytes(1, 'big')
@@ -32,8 +32,17 @@ def process_received_packet(data, address, sock):
     response_bytes += (request_data["external_port"]).to_bytes(2, 'big')
     response_bytes += (request_data["requested_lifetime"]).to_bytes(4, 'big')
 
-    print(response_bytes)
-    print(len(response_bytes))
+    response_data = {
+        'version': response_bytes[0],
+        'opcode': response_bytes[1],
+        'result': int.from_bytes(response_bytes[2:4], byteorder='big'),
+        'seconds_since_restart': int.from_bytes(response_bytes[4:8], byteorder='big'),
+        'internal_port': int.from_bytes(response_bytes[8:10], byteorder='big'),
+        'external_port': int.from_bytes(response_bytes[10:12], byteorder='big'),
+        'assigned_lifetime': int.from_bytes(response_bytes[12:16], byteorder='big'),
+    }
+
+    print("Response data: " + str(response_data))
 
     from network_module import send_udp_response
-    send_udp_response(response_bytes, address[0], sock)
+    send_udp_response(response_bytes, address, sock)
