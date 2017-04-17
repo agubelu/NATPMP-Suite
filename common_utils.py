@@ -1,5 +1,5 @@
 from IPy        import IP
-from datetime   import datetime
+from datetime   import datetime, timedelta
 
 import ipaddress
 import sys
@@ -33,3 +33,8 @@ def check_ip_address_type(param, iptype):
         raise ValueError
 
     return IP(param).iptype() == iptype
+
+
+# Returns a future date object, ahead by the current time as specified in seconds
+def get_future_date(seconds):
+    return datetime.now() + timedelta(seconds=seconds)
