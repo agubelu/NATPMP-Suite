@@ -1,7 +1,5 @@
 from common_utils                           import printlog, printerr
 from server_exceptions                      import MalformedPacketException
-from natpmp_packets                         import NATPMPRequest
-from natpmp_packets.NATPMPMappingResponse   import NATPMPMappingResponse
 
 import socket
 import settings
@@ -40,20 +38,23 @@ def initialize_network_sockets():
 
 
 def process_received_packet(data, address, sock):
-    #TODO procesar previamente el paquete seleccionanado la clase y dropeandolo si tiene opcode > 128
-    try:
-        request_object = NATPMPRequest.from_bytes(data)
-        request_object.address = address
-        request_object.sock = sock
-        print(str(request_object))
+    from natpmp_logic_common import received_bytes_to_request, process_request
 
-        response = NATPMPMappingResponse(0, 128+request_object.opcode, 0, request_object.internal_port, request_object.external_port, 13337)
-        response.sock = sock
-        response.address = address
-        send_response(response)
+    try:
+        # Convert the received UDP data to a Python object representing the client request
+        request = received_bytes_to_request(data)
+
+        # Add data to the request regarding the client IP/port and the socket in which it was received
+        request.address = address
+        request.sock = sock
+
+        # Send the request to be processed
+        process_request(request)
+
     except MalformedPacketException as e:
-        printlog("Ignoring anomalous packet: " + str(e))
+        printlog("Ignoring anomalous packet from %s: %s" % (str(address), str(e)))
 
 
 def send_response(response):
     response.sock.sendto(response.to_bytes(), response.address)
+
