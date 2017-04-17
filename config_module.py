@@ -48,6 +48,9 @@ def get_params_namespace():
                         help="Maximum external port number available for mappings (inclusive). Defaults to 65535.",
                         metavar="port", type=int, default=65535)
 
+    parser.add_argument('--excluded-ports', '-x', nargs='+', help="Ports to exclude from mapping requests.",
+                        metavar="port")
+
     parser.add_argument('--min-lifetime', '-minl', nargs=1,
                         help="Minimum lifetime for port mappings, in seconds. Defaults to 60 (1 minute).",
                         metavar="seconds", type=int, default=60)
@@ -90,6 +93,7 @@ def push_namespace_to_settings(namespace):
     settings.STRICT_CERTIFICATE_CHECKING = namespace.strict_certs
     settings.MIN_ALLOWED_MAPPABLE_PORT = namespace.min_port
     settings.MAX_ALLOWED_MAPPABLE_PORT = namespace.max_port
+    settings.EXCLUDED_PORTS = namespace.excluded_ports
     settings.MIN_ALLOWED_LIFETIME = namespace.min_lifetime
     settings.MAX_ALLOWED_LIFETIME = namespace.max_lifetime
     settings.FIXED_LIFETIME = namespace.fixed_lifetime
