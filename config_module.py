@@ -40,26 +40,26 @@ def get_params_namespace():
     parser.add_argument('--strict-certs', '-s', action='store_true',
                         help="Only accept certificates issued by the daemon")
 
-    parser.add_argument('--min-port', '-minp', nargs=1,
+    parser.add_argument('--min-port', '-minp', nargs='?',
                         help="Minimum external port number available for mappings (inclusive). Defaults to 1.",
                         metavar="port", type=int, default=1)
 
-    parser.add_argument('--max-port', '-maxp', nargs=1,
+    parser.add_argument('--max-port', '-maxp', nargs='?',
                         help="Maximum external port number available for mappings (inclusive). Defaults to 65535.",
                         metavar="port", type=int, default=65535)
 
     parser.add_argument('--excluded-ports', '-x', nargs='+', help="Ports to exclude from mapping requests.",
-                        metavar="port")
+                        metavar="port", type=int)
 
-    parser.add_argument('--min-lifetime', '-minl', nargs=1,
+    parser.add_argument('--min-lifetime', '-minl', nargs='?',
                         help="Minimum lifetime for port mappings, in seconds. Defaults to 60 (1 minute).",
                         metavar="seconds", type=int, default=60)
 
-    parser.add_argument('--max-lifetime', '-maxl', nargs=1,
+    parser.add_argument('--max-lifetime', '-maxl', nargs='?',
                         help="Maximum lifetime for port mappings, in seconds. Defaults to 3600 (1 hour).",
                         metavar="seconds", type=int, default=3600)
 
-    parser.add_argument('--fixed-lifetime', '-fixedl', nargs=1,
+    parser.add_argument('--fixed-lifetime', '-fixedl', nargs='?',
                         help="Fixed lifetime in seconds for all mappings. Overrides --max-lifetime and --min-lifetime.",
                         metavar="seconds", type=int, default=None)
 
@@ -203,7 +203,7 @@ def assert_settings_ok():
         if settings.WHITELISTED_IPS is None or len(settings.WHITELISTED_IPS) == 0:
             printerr("Warning: Whitelist mode is activated but the whitelist is empty. This will result in denying all requests from every client.")
         else:
-            _check_all_ips_correct(settings.BLACKLISTED_IPS, "the whitelist")
+            _check_all_ips_correct(settings.WHITELISTED_IPS, "the whitelist")
 
 ########################################################################################################################
 ########################################################################################################################

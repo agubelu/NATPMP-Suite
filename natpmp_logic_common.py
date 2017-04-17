@@ -1,12 +1,13 @@
-from server_exceptions                  import MalformedPacketException
-from natpmp_packets                     import NATPMPRequest
-from natpmp_packets.BaseNATPMPResponse  import BaseNATPMPResponse
-from natpmp_packets.NATPMPInfoResponse  import NATPMPInfoResponse
-from network_module                     import send_response
-from common_utils                       import printlog, get_future_date
+from server_exceptions                      import MalformedPacketException
+from natpmp_packets                         import NATPMPRequest
+from natpmp_packets.BaseNATPMPResponse      import BaseNATPMPResponse
+from natpmp_packets.NATPMPInfoResponse      import NATPMPInfoResponse
+from natpmp_packets.NATPMPMappingResponse   import NATPMPMappingResponse
+from network_module                         import send_response
+from common_utils                           import printlog, get_future_date
 
-from apscheduler.schedulers.background  import BackgroundScheduler
-from apscheduler.triggers.date          import DateTrigger
+from apscheduler.schedulers.background      import BackgroundScheduler
+from apscheduler.triggers.date              import DateTrigger
 
 import settings
 
@@ -77,12 +78,23 @@ def process_request(request):
     else:
         opcode = request.opcode
         if opcode == NATPMP_OPCODE_INFO:
+            operation_get_info(request)
+        elif (opcode == NATPMP_OPCODE_MAPUDP or opcode == NATPMP_OPCODE_MAPTCP) and request.requested_lifetime != 0:
+            operation_do_mapping(request)
+        elif (opcode == NATPMP_OPCODE_MAPUDP or opcode == NATPMP_OPCODE_MAPTCP) and request.requested_lifetime == 0 and request.internal_port != 0:
+            operation_remove_mapping(request)
+        elif (opcode == NATPMP_OPCODE_MAPUDP or opcode == NATPMP_OPCODE_MAPTCP) and request.requested_lifetime == 0 and request.internal_port == 0:
+            operation_remove_batch(request)
+        elif opcode == NATPMP_OPCODE_SENDCERT:
+            operation_exchange_certs(request)
 
 ########################################################################################################################################
 ########################################################################################################################################
 ########################################################################################################################################
 # Protocol operations
 
+
+# Returns information regarding the public interfaces available for mapping
 def operation_get_info(request):
     ip_addresses = settings.PUBLIC_INTERFACES if request.version == 1 else settings.PUBLIC_INTERFACES[0]
     response = NATPMPInfoResponse(request.version, request.opcode + 128, NATPMP_RESULT_OK, ip_addresses)
@@ -93,8 +105,50 @@ def operation_get_info(request):
     printlog("Discovery request from %s, version %d" % (request.address, request.version))
 
 
+# Tries to perform a port mapping operation
 def operation_do_mapping(request):
-    pass  #TODO
+    if not check_client_authorization(request):
+        return
+
+    client_ip = request.address[0]
+
+    # Get the public IPs to map into
+    public_ips = [settings.PUBLIC_INTERFACES[0]] if request.version == 0 else list(set(request.ipv4_addresses))
+
+    # Check that all the requested public IPs are available for mapping
+    if not all(ip in settings.PUBLIC_INTERFACES for ip in public_ips):
+        send_denied_response(request, NATPMP_RESULT_NOT_AUTHORIZED)
+        printlog("Denying request from %s: trying to map into a non-available external interface." % client_ip)
+        return
+
+    # TODO check that there is not another mapping for the same private port...
+    # TODO differentiate between ports available for renewal and for new mappings
+
+    # Get a port that is mappable for all interfaces
+    if len(public_ips) > 1:
+        external_port = get_common_available_port(public_ips, client_ip)
+    elif request.external_port == 0:
+        external_port = get_first_high_available_port(public_ips[0], client_ip)
+    else:
+        external_port = get_closest_available_port(public_ips[0], request.external_port, client_ip)
+
+    # Check that there is a port available for the client
+    if external_port is None:
+        send_denied_response(request, NATPMP_RESULT_INSUFFICIENT_RESOURCES)
+        printlog("Denying request from %s: not enough free external ports." % client_ip)
+        return
+
+    # At this point, the client can map into the requested port
+    print(request.opcode)
+    proto = 'UDP' if request.opcode == NATPMP_OPCODE_MAPUDP else 'TCP'
+    life = get_acceptable_lifetime(request.requested_lifetime)
+    for ip in public_ips:
+        create_mapping(ip, external_port, proto, client_ip, request.internal_port, life)
+
+    response = NATPMPMappingResponse(request.version, request.opcode + 128, NATPMP_RESULT_OK, request.internal_port, external_port, life)
+    response.sock = request.sock
+    response.address = request.address
+    send_response(response)
 
 
 def operation_remove_mapping(request):
@@ -111,7 +165,7 @@ def operation_exchange_certs(request):
 ########################################################################################################################################
 ########################################################################################################################################
 ########################################################################################################################################
-# Auxiliary port methods
+# Auxiliary methods
 
 
 # Checks whether a port (be it TCP or UDP) is assigned to a client in a certain public interface
@@ -125,7 +179,7 @@ def is_port_assigned_to_client(ip, port, client):
 # Checks whether a port is available to be mapped (that is, it's not already requested and it's within the
 # boundaries of mappable ports).
 def is_port_free(ip, port):
-    return port not in CURRENT_MAPPINGS[ip] and port not in settings.EXCLUDED_PORTS \
+    return port not in CURRENT_MAPPINGS[ip] and (settings.EXCLUDED_PORTS is None or port not in settings.EXCLUDED_PORTS) \
            and port in range(settings.MIN_ALLOWED_MAPPABLE_PORT, settings.MAX_ALLOWED_MAPPABLE_PORT + 1)
 
 
@@ -136,7 +190,9 @@ def is_port_mappable_for_client(ip, port, client):
 
 # Returns a lifetime as per the configuration params and the client request
 def get_acceptable_lifetime(requested_lifetime):
-    if requested_lifetime > settings.MAX_ALLOWED_LIFETIME:
+    if settings.FIXED_LIFETIME is not None:
+        return settings.FIXED_LIFETIME
+    elif requested_lifetime > settings.MAX_ALLOWED_LIFETIME:
         return settings.MAX_ALLOWED_LIFETIME
     elif requested_lifetime < settings.MIN_ALLOWED_LIFETIME:
         return settings.MIN_ALLOWED_LIFETIME
@@ -165,6 +221,38 @@ def get_first_high_available_port(ip, client):
             return i
 
     return None
+
+
+# Returns an available port for multiple interfaces. None if there is no such port.
+def get_common_available_port(ips, client):
+    for i in range(settings.MAX_ALLOWED_MAPPABLE_PORT, settings.MIN_ALLOWED_LIFETIME - 1, -1):
+        if all(is_port_mappable_for_client(ip, i, client) for ip in ips):
+            return i
+    return None
+
+
+# Issues a "non authorized" response if the client cannot perform operations per the config parameters (white/blacklist)
+# Returns True if the client is authorized, False otherwise
+def check_client_authorization(request):
+
+    ip_addr = request.address[0]
+
+    res = (not settings.BLACKLIST_MODE and not settings.WHITELIST_MODE) or (settings.BLACKLIST_MODE and ip_addr not in settings.BLACKLISTED_IPS) \
+           or (settings.WHITELIST_MODE and ip_addr in settings.WHITELISTED_IPS)
+
+    if not res:
+        send_denied_response(request, NATPMP_RESULT_NOT_AUTHORIZED)
+        printlog("Rejecting request from %s: not authorized." % ip_addr)
+
+    return res
+
+
+# Returns a "denied" response
+def send_denied_response(request, opcode):
+    response = NATPMPMappingResponse(request.version, request.opcode + 128, opcode, request.internal_port, 0, 0)
+    response.sock = request.sock
+    response.address = request.address
+    send_response(response)
 
 ########################################################################################################################################
 ########################################################################################################################################
