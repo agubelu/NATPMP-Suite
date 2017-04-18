@@ -27,6 +27,9 @@ NATPMP_RESULT_NOT_AUTHORIZED = 2
 NATPMP_RESULT_NETWORK_ERROR = 3
 NATPMP_RESULT_INSUFFICIENT_RESOURCES = 4
 NATPMP_RESULT_OPCODE_NOT_SUPPORTED = 5
+NATPMP_RESULT_MULTIASSIGN_FAILED = 6
+NATPMP_RESULT_TLS_ONLY = 7
+NATPMP_RESULT_BAD_CERT = 8
 
 SUPPORTED_OPCODES = {
     0: [NATPMP_OPCODE_INFO, NATPMP_OPCODE_MAPUDP, NATPMP_OPCODE_MAPTCP],
@@ -84,10 +87,8 @@ def process_request(request):
             operation_get_info(request)
         elif (opcode == NATPMP_OPCODE_MAPUDP or opcode == NATPMP_OPCODE_MAPTCP) and request.requested_lifetime != 0:
             operation_do_mapping(request)
-        elif (opcode == NATPMP_OPCODE_MAPUDP or opcode == NATPMP_OPCODE_MAPTCP) and request.requested_lifetime == 0 and request.internal_port != 0:
-            operation_remove_mapping(request)
-        elif (opcode == NATPMP_OPCODE_MAPUDP or opcode == NATPMP_OPCODE_MAPTCP) and request.requested_lifetime == 0 and request.internal_port == 0:
-            operation_remove_batch(request)
+        elif (opcode == NATPMP_OPCODE_MAPUDP or opcode == NATPMP_OPCODE_MAPTCP) and request.requested_lifetime == 0:
+            operation_remove_mappings(request)
         elif opcode == NATPMP_OPCODE_SENDCERT:
             operation_exchange_certs(request)
 
@@ -118,6 +119,7 @@ def operation_do_mapping(request):
     # Get the public IPs to map into
     public_ips = [settings.PUBLIC_INTERFACES[0]] if request.version == 0 else list(set(request.ipv4_addresses))
     request_proto = 'TCP' if request.opcode == NATPMP_OPCODE_MAPTCP else 'UDP'
+    client_mappings = get_mappings_client(public_ips, [request.internal_port], [request_proto], client_ip)
 
     # Check that all the requested public IPs are available for mapping
     if not all(ip in settings.PUBLIC_INTERFACES for ip in public_ips):
@@ -125,23 +127,19 @@ def operation_do_mapping(request):
         printlog("Denying request from %s: trying to map into a non-available external interface." % client_ip)
         return
 
-    # TODO check that there is not another mapping for the same private port...
-    # TODO differentiate between ports available for renewal and for new mappings
-
     if len(public_ips) == 1:
         # We're only mapping for a single public interface
         pub_ip = public_ips[0]
-        client_mappings = get_mappings_client(public_ips, [request.internal_port], [request_proto], client_ip)
         is_new = not client_mappings
 
         if is_new:
             # We are handling a new mapping request, search for an available port as requested by the client
             if request.external_port == 0:
                 # Assign a high port per server preference
-                ext_port = get_first_high_available_port(pub_ip, request_proto, client_ip)
+                ext_port = get_first_high_available_port([pub_ip], request_proto, client_ip)
             else:
                 # Try to assign the closest port to the client's preference
-                ext_port = get_closest_available_port(pub_ip, request.external_port, request_proto, client_ip)
+                ext_port = get_closest_available_port([pub_ip], request.external_port, request_proto, client_ip)
 
             # Check that there is a port available for the client
             if ext_port is None:
@@ -168,41 +166,74 @@ def operation_do_mapping(request):
                 time_dif = (existing_mapping['job'].next_run_time - datetime.now(tzlocal())).total_seconds()
                 send_ok_response(request, request.internal_port, existing_mapping['public_port'], int(time_dif))
 
-    """
-    # Get a port that is mappable for all interfaces
-    if len(public_ips) > 1:
-        external_port = get_common_available_port(public_ips, client_ip)
-    elif request.external_port == 0:
-        external_port = get_first_high_available_port(public_ips[0], client_ip)
     else:
-        external_port = get_closest_available_port(public_ips[0], request.external_port, client_ip)
+        # We are mapping for multiple public interfaces
+        # This operation will be available only if all of them are new mappings or are already mapped to the
+        # same public port on all interfaces.
+        all_new = not client_mappings
+        if all_new:
+            if request.external_port == 0:
+                # Assign a high port per server preference
+                ext_port = get_first_high_available_port(public_ips, request_proto, client_ip)
+            else:
+                # Try to assign the closest port to the client's preference
+                ext_port = get_closest_available_port(public_ips, request.external_port, request_proto, client_ip)
 
-    # Check that there is a port available for the client
-    if external_port is None:
-        send_denied_response(request, NATPMP_RESULT_INSUFFICIENT_RESOURCES)
-        printlog("Denying request from %s: not enough free external ports." % client_ip)
+            # Check that there is a port available for the client
+            if ext_port is None:
+                send_denied_response(request, NATPMP_RESULT_INSUFFICIENT_RESOURCES)
+                printlog("Denying request from %s: not enough free external ports." % client_ip)
+                return
+
+            # At this point, the client can map into the requested port
+            life = get_acceptable_lifetime(request.requested_lifetime)
+            for ip in public_ips:
+                create_mapping(ip, ext_port, request_proto, client_ip, request.internal_port, life)
+            send_ok_response(request, request.internal_port, ext_port, life)
+
+        else:
+            # There are mappings on some/all interfaces, check that all of the requested mappings can be updated
+            # That is, there are already as many mappings as requested, and all of them are bound to the same external port
+            all_updatable = len(client_mappings) == len(public_ips) and len(set(m['public_port'] for m in client_mappings)) == 1
+
+            if all_updatable:
+                pub_port = client_mappings[0]['public_port']
+                for ip in public_ips:
+                    life = get_acceptable_lifetime(request.requested_lifetime)
+                    create_mapping(ip, pub_port, request_proto, client_ip, request.internal_port, life)
+                send_ok_response(request, request.internal_port, pub_port, life)
+            else:
+                send_denied_response(request, NATPMP_RESULT_MULTIASSIGN_FAILED)
+
+
+def operation_remove_mappings(request):
+    if not check_client_authorization(request):
         return
 
-    # At this point, the client can map into the requested port
-    print(request.opcode)
-    proto = 'UDP' if request.opcode == NATPMP_OPCODE_MAPUDP else 'TCP'
-    life = get_acceptable_lifetime(request.requested_lifetime)
-    for ip in public_ips:
-        create_mapping(ip, external_port, proto, client_ip, request.internal_port, life)
+    client_ip = request.address[0]
+    request_proto = 'TCP' if request.opcode == NATPMP_OPCODE_MAPTCP else 'UDP'
 
-    response = NATPMPMappingResponse(request.version, request.opcode + 128, NATPMP_RESULT_OK, request.internal_port, external_port, life)
-    response.sock = request.sock
-    response.address = request.address
-    send_response(response)
-    """
+    # Get the public IPs to remove maps from
+    public_ips = [settings.PUBLIC_INTERFACES[0]] if request.version == 0 else list(set(request.ipv4_addresses))
 
+    # Get the client's private port to remove mappings from
+    internal_port = request.internal_port
 
-def operation_remove_mapping(request):
-    pass  #TODO
+    # Get the range of private ports to scan for mappings from the client
+    # If the private port is different from 0, then the client only wants to remove mappings for that private port
+    # If it's set to 0, then the client wants to remove all of his mapping for the requested interfaces.
+    private_port_range = [internal_port] if internal_port != 0 else range(settings.MIN_ALLOWED_MAPPABLE_PORT, settings.MAX_ALLOWED_MAPPABLE_PORT + 1)
 
+    mappings = get_mappings_client(public_ips, private_port_range, [request_proto], client_ip)
 
-def operation_remove_batch(request):
-    pass  #TODO
+    # Note that there is no way for a client to remove mappings from another client, since they are searched from
+    # the IP address that sent the request. Also, per protocol specification, requests to delete non-existent mappings
+    # also returns an OK result code.
+
+    for mapping in mappings:
+        remove_mapping(mapping['ip'], mapping['public_port'], mapping['proto'], 'client request')
+
+    send_ok_response(request, internal_port, 0, 0)
 
 
 def operation_exchange_certs(request):
@@ -212,27 +243,6 @@ def operation_exchange_certs(request):
 ########################################################################################################################################
 ########################################################################################################################################
 # Auxiliary methods
-
-"""
-# Checks whether a port (be it TCP or UDP) is assigned to a client in a certain public interface
-def is_port_assigned_to_client(ip, port, client):
-    if port not in CURRENT_MAPPINGS[ip]:
-        return False
-
-    return next(iter(CURRENT_MAPPINGS[ip][port].values()))['client'] == client
-
-
-# Checks whether a port is available to be mapped (that is, it's not already requested and it's within the
-# boundaries of mappable ports).
-def is_port_free(ip, port):
-    return port not in CURRENT_MAPPINGS[ip] and (settings.EXCLUDED_PORTS is None or port not in settings.EXCLUDED_PORTS) \
-           and port in range(settings.MIN_ALLOWED_MAPPABLE_PORT, settings.MAX_ALLOWED_MAPPABLE_PORT + 1)
-
-
-# Checks whether a client can map a certain port
-def is_port_mappable_for_client(ip, port, client):
-    return is_port_free(ip, port) or is_port_assigned_to_client(ip, port, client)
-"""
 
 
 # Checks if a NEW mapping request can be fulfulled for a port, public IP, protocol and client
@@ -270,23 +280,23 @@ def get_acceptable_lifetime(requested_lifetime):
 
 
 # Returns the closest available public port for the client who requested a new mapping. Returns None if there is no such port available.
-def get_closest_available_port(ip, port, proto, client):
-    if is_new_mapping_available(ip, port, proto, client):
+def get_closest_available_port(ips, port, proto, client):
+    if all(is_new_mapping_available(ip, port, proto, client) for ip in ips):
         return port
 
     for i in range(1, max(abs(port - settings.MIN_ALLOWED_MAPPABLE_PORT), abs(port - settings.MAX_ALLOWED_MAPPABLE_PORT)) + 1):
-        if is_new_mapping_available(ip, (port + i), proto, client):
+        if all(is_new_mapping_available(ip, (port + i), proto, client) for ip in ips):
             return port + i
-        elif is_new_mapping_available(ip, (port - i), proto, client):
+        elif all(is_new_mapping_available(ip, (port - i), proto, client) for ip in ips):
             return port - i
 
     return None
 
 
 # Returns the first high port available for mapping, None if there is no port available
-def get_first_high_available_port(ip, proto, client):
+def get_first_high_available_port(ips, proto, client):
     for i in range(settings.MAX_ALLOWED_MAPPABLE_PORT, settings.MIN_ALLOWED_MAPPABLE_PORT - 1, -1):
-        if is_new_mapping_available(ip, i, proto, client):
+        if all(is_new_mapping_available(ip, i, proto, client) for ip in ips):
             return i
 
     return None
@@ -313,10 +323,6 @@ def get_mappings_dicts():
 
 def get_mappings_client(ips, private_ports, protos, client):
     return [m for m in get_mappings_dicts() if m['ip'] in ips and m['internal_port'] in private_ports and m['proto'] in protos and m['client'] == client]
-
-
-def is_new_mapping(ip, private_port, proto, client):
-    return len(get_mappings_client([ip], [private_port], [proto], client)) > 0
 
 
 # Issues a "non authorized" response if the client cannot perform operations per the config parameters (white/blacklist)
