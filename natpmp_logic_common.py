@@ -231,6 +231,7 @@ def operation_remove_mappings(request):
     # also returns an OK result code.
 
     for mapping in mappings:
+        mapping['job'].remove()
         remove_mapping(mapping['ip'], mapping['public_port'], mapping['proto'], 'client request')
 
     send_ok_response(request, internal_port, 0, 0)
@@ -384,7 +385,7 @@ def create_mapping(ip, port, proto, client, internal_port, lifetime):
     else:
         job = mapping_scheduler.add_job(remove_mapping, trigger=DateTrigger(expiration_date), args=(ip, port, proto, 'lifetime terminated'))
         CURRENT_MAPPINGS[ip][port][proto] = {'job': job, 'client': client, 'internal_port': internal_port}
-        printlog("Creating mapping for %s:%d %s per %s request, expiration time is %s" % (ip, port, proto, client, str(expiration_date)))
+        printlog("Creating %s mapping for %s:%d -> %s:%d, expiration time is %s" % (proto, ip, port, client, internal_port, str(expiration_date)))
 
     print(CURRENT_MAPPINGS)
 
