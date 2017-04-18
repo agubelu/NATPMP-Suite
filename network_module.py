@@ -1,5 +1,8 @@
 from common_utils                           import printlog, printerr
 from server_exceptions                      import MalformedPacketException
+from threading                              import Thread
+from time                                   import sleep
+from natpmp_packets.NATPMPInfoResponse      import NATPMPInfoResponse
 
 import socket
 import settings
@@ -27,6 +30,9 @@ def initialize_network_sockets():
 
     from natpmp import DAEMON_START_TIME
     printlog("Daemon started at timestamp %s" % DAEMON_START_TIME)
+
+    # Send the gratuitous multicast info at startup
+    send_multicast_info()
 
     # Infinite network loop to attend requests
     while True:
@@ -58,3 +64,31 @@ def process_received_packet(data, address, sock):
 def send_response(response):
     response.sock.sendto(response.to_bytes(), response.address)
 
+
+def send_multicast_info():
+
+    # Define the function that will carry out the work
+    def work_send_multicast():
+
+        multicast_address = '224.0.0.1'
+        multicast_port = 5350
+
+        sent = 0
+        delay = 250  # Milliseconds
+
+        # Create the socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+
+        # Send 10 requests, with the delay time doubling every time
+        while sent < 10:
+            if sent != 0:
+                sleep(pow(2, sent - 1) * delay / 1000)
+
+            msg = NATPMPInfoResponse(0, 128, 0, settings.PUBLIC_INTERFACES)
+            sock.sendto(msg.to_bytes(), (multicast_address, multicast_port))
+            sent += 1
+
+    # Create a new thread to carry the work out
+    t = Thread(target=work_send_multicast)
+    t.start()
