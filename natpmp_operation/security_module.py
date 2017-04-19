@@ -7,14 +7,16 @@ from natpmp_operation.server_exceptions             import InvalidCertificateExc
 from cryptography                                   import x509
 from cryptography.hazmat.backends                   import default_backend
 from cryptography.hazmat.primitives                 import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric      import rsa
+from cryptography.hazmat.primitives.asymmetric      import rsa, padding
 from cryptography.hazmat.primitives.serialization   import load_pem_private_key
 from cryptography.x509.oid                          import NameOID
+from cryptography.exceptions                        import InvalidSignature
 
 from apscheduler.schedulers.background              import BackgroundScheduler
 from apscheduler.triggers.date                      import DateTrigger
 
 import os
+import settings
 
 
 ROOT_CERTIFICATE = None
@@ -29,6 +31,9 @@ enabled_ips_scheduler.start()
 
 # Loads the system root, self-signed cert into the module, creating it if it doesn't exist yet
 def initialize_root_certificate():
+
+    global ROOT_CERTIFICATE
+    global ROOT_KEY
 
     root_cert_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "certs/root.crt")
     root_pk_path = os.path.join(os.path.dirname(root_cert_path), "root.key")
@@ -74,7 +79,7 @@ def initialize_root_certificate():
             x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, u"SE"),
             x509.NameAttribute(NameOID.LOCALITY_NAME, u"Sevilla"),
             x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"ACME"),
-            x509.NameAttribute(NameOID.COMMON_NAME, u"localhost"),
+            x509.NameAttribute(NameOID.COMMON_NAME, u"NAT-PMP Daemon"),
         ])
 
         root_cert = x509.CertificateBuilder() \
@@ -127,6 +132,47 @@ def initialize_root_certificate():
 
         ROOT_KEY = key
         ROOT_CERTIFICATE = x509.load_pem_x509_certificate(cert_bytes, default_backend())
+
+
+# Given a bytes object, returns a valid certificate or raises InvalidCertificateException otherwise.
+# Note that if strict certificate checking is enabled, only certificates issued by the get-cert
+# utility will be considered valid.
+def get_cert_from_bytes(byte_data):
+
+    # Try to decode the cert from the byte data
+    try:
+        cert = x509.load_pem_x509_certificate(byte_data, default_backend())
+    except ValueError:
+        try:
+            cert = x509.load_der_x509_certificate(byte_data, default_backend())
+        except ValueError:
+            raise InvalidCertificateException("The certificate is sintactically incorrect or it's not in any supported encodings (PEM/DER)")
+
+    # We got the cert and it seems to be correct, check that the current time is within the boundaries
+    if not cert.not_valid_before < datetime.utcnow() < cert.not_valid_after:
+        raise InvalidCertificateException("")
+
+    # If strict checking is enabled, check that it is signed by our root certificate and key
+    if settings.STRICT_CERTIFICATE_CHECKING:
+        cert_payload_bytes = cert.tbs_certificate_bytes
+        cert_hashing_algo = cert.signature_hash_algorithm
+        cert_signature = cert.signature
+        root_cert_public_key = ROOT_CERTIFICATE.public_key()
+
+        try:
+            root_cert_public_key.verify(
+                cert_signature,
+                cert_payload_bytes,
+                padding.PSS(
+                    mgf=padding.MGF1(cert_hashing_algo),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                cert_hashing_algo
+            )
+        except InvalidSignature:
+            raise InvalidCertificateException("The certificate was not issued by the NAT-PMP service.")
+
+    return cert
 
 
 ##########################################################################################################
