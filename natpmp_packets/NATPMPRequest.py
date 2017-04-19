@@ -1,7 +1,7 @@
-from server_exceptions                  import MalformedPacketException
-from natpmp_packets.BaseNATPMPPacket    import BaseNATPMPPacket
-
 import socket
+
+from natpmp_operation.server_exceptions import MalformedPacketException
+from natpmp_packets.BaseNATPMPPacket    import BaseNATPMPPacket
 
 
 def from_bytes(byte_data):

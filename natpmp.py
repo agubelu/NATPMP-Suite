@@ -1,8 +1,9 @@
-from config_module      import process_command_line_params
-from network_module     import initialize_network_sockets
-
 import time
-import security_module
+
+from natpmp_operation                   import security_module
+from natpmp_operation.network_module    import initialize_network_sockets
+
+from natpmp_operation.config_module     import process_command_line_params
 
 # Initialize the current time to populate the "seconds since boot" parameter for the responses
 DAEMON_START_TIME = time.time()

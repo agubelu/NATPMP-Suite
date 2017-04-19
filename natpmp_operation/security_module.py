@@ -1,13 +1,14 @@
-from common_utils                                   import printlog
-from getpass                                        import getpass
 from datetime                                       import datetime, timedelta
+from getpass                                        import getpass
+
+from natpmp_operation.common_utils                  import printlog
 
 from cryptography                                   import x509
-from cryptography.x509.oid                          import NameOID
 from cryptography.hazmat.backends                   import default_backend
 from cryptography.hazmat.primitives                 import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric      import rsa
 from cryptography.hazmat.primitives.serialization   import load_pem_private_key
+from cryptography.x509.oid                          import NameOID
 
 import os
 
@@ -19,8 +20,8 @@ ROOT_KEY = None
 # Loads the system root, self-signed cert into the module, creating it if it doesn't exist yet
 def initialize_root_certificate():
 
-    root_cert_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certs/root.crt")
-    root_pk_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certs/root.key")
+    root_cert_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "certs/root.crt")
+    root_pk_path = os.path.join(os.path.dirname(root_cert_path), "root.key")
 
     if not os.path.exists(root_cert_path) or not os.path.exists(root_pk_path):
         # Must create a new cert-key pair

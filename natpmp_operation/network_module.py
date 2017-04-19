@@ -1,13 +1,14 @@
-from common_utils                           import printlog, printerr
-from server_exceptions                      import MalformedPacketException
 from threading                              import Thread
 from time                                   import sleep
+
+from natpmp_operation.common_utils          import printlog, printerr
+from natpmp_operation.server_exceptions     import MalformedPacketException
+
 from natpmp_packets.NATPMPInfoResponse      import NATPMPInfoResponse
 
+import select
 import socket
 import settings
-import select
-
 
 NATPMP_PORT = 5351
 
@@ -44,7 +45,7 @@ def initialize_network_sockets():
 
 
 def process_received_packet(data, address, sock):
-    from natpmp_logic_common import received_bytes_to_request, process_request
+    from natpmp_operation.natpmp_logic_common import received_bytes_to_request, process_request
 
     try:
         # Convert the received UDP data to a Python object representing the client request

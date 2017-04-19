@@ -1,8 +1,8 @@
-from common_utils import is_valid_ip_string, printerr, check_ip_address_type
-
-import settings
 import argparse
 import sys
+
+import settings
+from natpmp_operation.common_utils import is_valid_ip_string, printerr, check_ip_address_type
 
 
 def process_command_line_params():
