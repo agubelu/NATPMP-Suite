@@ -2,13 +2,14 @@ from threading                              import Thread
 from time                                   import sleep
 
 from natpmp_operation.common_utils          import printlog, printerr
-from natpmp_operation.server_exceptions     import MalformedPacketException
-
+from natpmp_operation.server_exceptions     import MalformedPacketException, InvalidPacketSignatureException
 from natpmp_packets.NATPMPInfoResponse      import NATPMPInfoResponse
+from natpmp_operation                       import security_module
 
 import select
 import socket
 import settings
+import traceback
 
 NATPMP_PORT = 5351
 
@@ -40,7 +41,7 @@ def initialize_network_sockets():
         # Blocking call that will wait until a socket becomes available with data
         ready_sockets, _, _ = select.select(sockets, [], [])
         for sock in ready_sockets:
-            data, address = sock.recvfrom(2048)
+            data, address = sock.recvfrom(4096)
             process_received_packet(data, address, sock)
 
 
@@ -48,6 +49,11 @@ def process_received_packet(data, address, sock):
     from natpmp_operation.natpmp_logic_common import received_bytes_to_request, process_request
 
     try:
+        # If the sender is in the TLS-enabled IPs, try to decipher the packet
+        if address[0] in security_module.TLS_IPS:
+            # Decipher the data and check the packet signature
+            data = security_module.decipher_and_check_signature(data, security_module.ROOT_KEY, security_module[address[0]]['cert'].public_key())
+
         # Convert the received UDP data to a Python object representing the client request
         request = received_bytes_to_request(data)
 
@@ -58,13 +64,26 @@ def process_received_packet(data, address, sock):
         # Send the request to be processed
         process_request(request)
 
-    except MalformedPacketException as e:
+    except (MalformedPacketException, InvalidPacketSignatureException) as e:
         printlog("Ignoring anomalous packet from %s: %s" % (str(address), str(e)))
-        # TODO if the sender is in the TLS list, remove their IP from it.
+        if address[0] in security_module.TLS_IPS:
+            security_module.remove_ip_from_tls_enabled(address[0])
+    except Exception as e:
+        printerr("Uncaught exception processing a packet: %s" % str(e))
+        traceback.print_exc()
 
 
 def send_response(response):
-    response.sock.sendto(response.to_bytes(), response.address)
+    client_ip = response.address[0]
+
+    # If the client sent the request through a secure packet, answer them the same way and remove it from the list (must handshake again)
+    if client_ip in security_module.TLS_IPS:
+        response_data = security_module.sign_and_cipher_data(response.to_bytes(), security_module.TLS_IPS[client_ip]['cert'].public_key(), security_module.ROOT_KEY)
+        security_module.remove_ip_from_tls_enabled(client_ip)
+    else:
+        response_data = response.to_bytes
+
+    response.sock.sendto(response_data, response.address)
 
 
 def send_multicast_info():

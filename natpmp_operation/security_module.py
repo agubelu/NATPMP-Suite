@@ -2,7 +2,7 @@ from datetime                                       import datetime, timedelta
 from getpass                                        import getpass
 
 from natpmp_operation.common_utils                  import printlog, get_future_date
-from natpmp_operation.server_exceptions             import InvalidCertificateException, InvalidPacketSignatureException
+from natpmp_operation.server_exceptions             import InvalidCertificateException, InvalidPacketSignatureException, MalformedPacketException
 
 from cryptography                                   import x509
 from cryptography.hazmat.backends                   import default_backend
@@ -175,9 +175,77 @@ def get_cert_from_bytes(byte_data):
     return cert
 
 
+# Signs byte_data using private_key and ciphers the data using public_key
+# Data is returned as per NAT-PMP custom v1 specification
+
+# cipher_with_rsa(signature_length (4 bytes) + signature + data)
+def sign_and_cipher_data(byte_data, public_key, private_key):
+
+    signature = private_key.sign(
+        byte_data,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH,
+        ),
+        hashes.SHA256()
+    )
+
+    signature_length = len(signature)
+
+    res = signature_length.to_bytes(4, 'big')
+    res += signature
+    res += byte_data
+
+    ciphered = public_key.encrypt(
+        res,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+    return ciphered
+
+
+# Deciphers ciphered using private_key and checks the signature against public_key
+def decipher_and_check_signature(ciphered, private_key, public_key):
+
+    if len(ciphered < 10):
+        raise MalformedPacketException("Ciphered packet is too short")
+
+    deciphered = private_key.decrypt(
+        ciphered,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+    signature_length = int.from_bytes(deciphered[0:4], 'big')
+    signature = deciphered[4:signature_length + 4]
+    plain_data = deciphered[signature_length + 4:]
+
+    try:
+        public_key.verify(
+            signature,
+            plain_data,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH,
+            ),
+            hashes.SHA256()
+        )
+    except InvalidSignature:
+        raise InvalidPacketSignatureException("The received packet's signature is not valid.")
+
+    return plain_data
+
 ##########################################################################################################
 ##########################################################################################################
 ##########################################################################################################
+
 
 def add_ip_to_tls_enabled(ip_addr, cert):
     autoremoval_trigger = DateTrigger(get_future_date(60))
