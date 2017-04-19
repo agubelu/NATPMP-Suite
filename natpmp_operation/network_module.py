@@ -60,6 +60,7 @@ def process_received_packet(data, address, sock):
 
     except MalformedPacketException as e:
         printlog("Ignoring anomalous packet from %s: %s" % (str(address), str(e)))
+        # TODO if the sender is in the TLS list, remove their IP from it.
 
 
 def send_response(response):

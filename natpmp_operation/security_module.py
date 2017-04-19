@@ -1,7 +1,8 @@
 from datetime                                       import datetime, timedelta
 from getpass                                        import getpass
 
-from natpmp_operation.common_utils                  import printlog
+from natpmp_operation.common_utils                  import printlog, get_future_date
+from natpmp_operation.server_exceptions             import InvalidCertificateException, InvalidPacketSignatureException
 
 from cryptography                                   import x509
 from cryptography.hazmat.backends                   import default_backend
@@ -10,11 +11,20 @@ from cryptography.hazmat.primitives.asymmetric      import rsa
 from cryptography.hazmat.primitives.serialization   import load_pem_private_key
 from cryptography.x509.oid                          import NameOID
 
+from apscheduler.schedulers.background              import BackgroundScheduler
+from apscheduler.triggers.date                      import DateTrigger
+
 import os
 
 
 ROOT_CERTIFICATE = None
 ROOT_KEY = None
+
+TLS_IPS = {}
+
+# Initialize the scheduler that will take care of removing expired TLS IPs
+enabled_ips_scheduler = BackgroundScheduler()
+enabled_ips_scheduler.start()
 
 
 # Loads the system root, self-signed cert into the module, creating it if it doesn't exist yet
@@ -117,3 +127,29 @@ def initialize_root_certificate():
 
         ROOT_KEY = key
         ROOT_CERTIFICATE = x509.load_pem_x509_certificate(cert_bytes, default_backend())
+
+
+##########################################################################################################
+##########################################################################################################
+##########################################################################################################
+
+def add_ip_to_tls_enabled(ip_addr, cert):
+    autoremoval_trigger = DateTrigger(get_future_date(60))
+
+    # If it's already in the dict, update the removal time
+    if ip_addr in TLS_IPS:
+        TLS_IPS[ip_addr]['job'].reschedule(autoremoval_trigger)
+        printlog("Renewing %s in TLS-enabled IPs" % ip_addr)
+    else:
+        job = enabled_ips_scheduler.add_job(remove_ip_from_tls_enabled, trigger=autoremoval_trigger, args=(ip_addr, True))
+        TLS_IPS[ip_addr] = {'cert': cert, 'job': job}
+        printlog("Adding %s in TLS-enabled IPs" % ip_addr)
+
+
+def remove_ip_from_tls_enabled(ip_addr, auto=False):
+    if ip_addr in TLS_IPS:
+        if not auto:
+            TLS_IPS[ip_addr]['job'].remove()
+        del TLS_IPS[ip_addr]
+
+        printlog("Removing %s from TLS-enabled IPs" % ip_addr)

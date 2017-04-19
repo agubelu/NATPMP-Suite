@@ -5,14 +5,16 @@ from apscheduler.triggers.date              import DateTrigger
 from dateutil.tz                            import tzlocal
 from natpmp_operation.network_module        import send_response
 from natpmp_operation.server_exceptions     import MalformedPacketException
+from natpmp_operation                       import security_module
 
 from natpmp_operation.common_utils          import printlog, get_future_date
-from natpmp_packets                         import NATPMPRequest
+from natpmp_packets                         import NATPMPRequest, NATPMPCertHandshake
 from natpmp_packets.BaseNATPMPResponse      import BaseNATPMPResponse
 from natpmp_packets.NATPMPInfoResponse      import NATPMPInfoResponse
 from natpmp_packets.NATPMPMappingResponse   import NATPMPMappingResponse
 
 import settings
+
 
 # Constants definition
 NATPMP_OPCODE_INFO = 0
@@ -54,9 +56,8 @@ def received_bytes_to_request(data):
     if data[1] >= 128:
         raise MalformedPacketException("Packet has top bit of opcode set (is a response)")
 
-    if data[0] == 1 and data[1] == 3:
-        # TODO This is a certificate handshake from V1 and must be encapsulated on a different object
-        pass
+    if data[0] == 1 and data[1] == NATPMP_OPCODE_SENDCERT:
+        return NATPMPCertHandshake.from_bytes(data)
     else:
         return NATPMPRequest.from_bytes(data)
 
@@ -199,10 +200,12 @@ def operation_do_mapping(request):
 
             if all_updatable:
                 pub_port = client_mappings[0]['public_port']
+                life = get_acceptable_lifetime(request.requested_lifetime)
+
                 for ip in public_ips:
-                    life = get_acceptable_lifetime(request.requested_lifetime)
                     create_mapping(ip, pub_port, request_proto, client_ip, request.internal_port, life)
                 send_ok_response(request, request.internal_port, pub_port, life)
+
             else:
                 send_denied_response(request, NATPMP_RESULT_MULTIASSIGN_FAILED)
 
@@ -239,7 +242,8 @@ def operation_remove_mappings(request):
 
 
 def operation_exchange_certs(request):
-    pass  #TODO
+    if not check_client_authorization(request, handshake=True):
+        return
 
 ########################################################################################################################################
 ########################################################################################################################################
@@ -329,18 +333,32 @@ def get_mappings_client(ips, private_ports, protos, client):
 
 # Issues a "non authorized" response if the client cannot perform operations per the config parameters (white/blacklist)
 # Returns True if the client is authorized, False otherwise
-def check_client_authorization(request):
+def check_client_authorization(request, handshake=False):
 
     ip_addr = request.address[0]
 
-    res = (not settings.BLACKLIST_MODE and not settings.WHITELIST_MODE) or (settings.BLACKLIST_MODE and ip_addr not in settings.BLACKLISTED_IPS) \
-           or (settings.WHITELIST_MODE and ip_addr in settings.WHITELISTED_IPS)
+    # Check that the client has authorization per black and whitelist configurations
 
-    if not res:
-        send_denied_response(request, NATPMP_RESULT_NOT_AUTHORIZED)
+    auth = (not settings.BLACKLIST_MODE and not settings.WHITELIST_MODE) or (settings.BLACKLIST_MODE and ip_addr not in settings.BLACKLISTED_IPS) \
+        or (settings.WHITELIST_MODE and ip_addr in settings.WHITELISTED_IPS)
+
+    if not auth:
+        if not handshake:
+            # Standard mapping response
+            send_denied_response(request, NATPMP_RESULT_NOT_AUTHORIZED)
+        else:
+            # Handshake response
+            send_denied_handshake_response(request, NATPMP_RESULT_NOT_AUTHORIZED)
         printlog("Rejecting request from %s: not authorized." % ip_addr)
+        return False
 
-    return res
+    if not handshake and settings.FORCE_TLS_IN_V1 and ip_addr not in security_module.TLS_IPS:
+        # If the current request is not a handshake, TLS is enforced, and the issuer has not still sent a handshake, deny the response
+        send_denied_response(request, NATPMP_RESULT_TLS_ONLY)
+        printlog("Rejecting request from %s: plain-text request while TLS is enforced." % ip_addr)
+        return False
+
+    return True
 
 
 # Returns a "denied" mapping response
@@ -357,6 +375,12 @@ def send_ok_response(request, internal_port, external_port, lifetime):
     response.sock = request.sock
     response.address = request.address
     send_response(response)
+
+
+def send_denied_handshake_response(request, rescode):
+    request.opcode += 128
+    request.reserved = rescode
+    send_response(request)
 
 ########################################################################################################################################
 ########################################################################################################################################
