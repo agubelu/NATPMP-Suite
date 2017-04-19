@@ -19,6 +19,7 @@ import os
 import settings
 
 
+CERT_CACHE_TIME = 60  # Seconds
 ROOT_CERTIFICATE = None
 ROOT_KEY = None
 
@@ -150,7 +151,7 @@ def get_cert_from_bytes(byte_data):
 
     # We got the cert and it seems to be correct, check that the current time is within the boundaries
     if not cert.not_valid_before < datetime.utcnow() < cert.not_valid_after:
-        raise InvalidCertificateException("")
+        raise InvalidCertificateException("The certificate is expired or not yet active")
 
     # If strict checking is enabled, check that it is signed by our root certificate and key
     if settings.STRICT_CERTIFICATE_CHECKING:
@@ -211,7 +212,7 @@ def sign_and_cipher_data(byte_data, public_key, private_key):
 # Deciphers ciphered using private_key and checks the signature against public_key
 def decipher_and_check_signature(ciphered, private_key, public_key):
 
-    if len(ciphered < 10):
+    if len(ciphered) < 10:
         raise MalformedPacketException("Ciphered packet is too short")
 
     deciphered = private_key.decrypt(
@@ -248,7 +249,7 @@ def decipher_and_check_signature(ciphered, private_key, public_key):
 
 
 def add_ip_to_tls_enabled(ip_addr, cert):
-    autoremoval_trigger = DateTrigger(get_future_date(60))
+    autoremoval_trigger = DateTrigger(get_future_date(CERT_CACHE_TIME))
 
     # If it's already in the dict, update the removal time
     if ip_addr in TLS_IPS:

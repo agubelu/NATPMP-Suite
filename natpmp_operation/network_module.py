@@ -52,7 +52,7 @@ def process_received_packet(data, address, sock):
         # If the sender is in the TLS-enabled IPs, try to decipher the packet
         if address[0] in security_module.TLS_IPS:
             # Decipher the data and check the packet signature
-            data = security_module.decipher_and_check_signature(data, security_module.ROOT_KEY, security_module[address[0]]['cert'].public_key())
+            data = security_module.decipher_and_check_signature(data, security_module.ROOT_KEY, security_module.TLS_IPS[address[0]]['cert'].public_key())
 
         # Convert the received UDP data to a Python object representing the client request
         request = received_bytes_to_request(data)

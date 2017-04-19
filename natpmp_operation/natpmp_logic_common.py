@@ -4,8 +4,9 @@ from apscheduler.schedulers.background      import BackgroundScheduler
 from apscheduler.triggers.date              import DateTrigger
 from dateutil.tz                            import tzlocal
 from natpmp_operation.network_module        import send_response
-from natpmp_operation.server_exceptions     import MalformedPacketException
+from natpmp_operation.server_exceptions     import MalformedPacketException, InvalidCertificateException
 from natpmp_operation                       import security_module
+from cryptography.hazmat.primitives         import serialization
 
 from natpmp_operation.common_utils          import printlog, get_future_date
 from natpmp_packets                         import NATPMPRequest, NATPMPCertHandshake
@@ -244,6 +245,26 @@ def operation_remove_mappings(request):
 def operation_exchange_certs(request):
     if not check_client_authorization(request, handshake=True):
         return
+
+    client_ip = request.address[0]
+
+    # Check that the client sent a valid cert
+    # The security module check that it's emmited from us if strict cert checking is active
+    try:
+        cert = security_module.get_cert_from_bytes(request.cert_bytes)
+    except InvalidCertificateException as e:
+        print("Denying handshake from %s: %s" % (client_ip, str(e)))
+        send_denied_handshake_response(request, NATPMP_RESULT_BAD_CERT)
+        return
+
+    # TODO check that the address in the cert matches the one from the request
+
+    # Send the response first (to not trigger deletion from TLS-enabled IPs)
+    response = NATPMPCertHandshake.NATPMPCertHandshake(request.version, request.opcode + 128, NATPMP_RESULT_OK, security_module.ROOT_CERTIFICATE.public_bytes(serialization.Encoding.PEM))
+    send_response(response)
+
+    # Then add the cert to the TLS-allowed IPs
+    security_module.add_ip_to_tls_enabled(client_ip, cert)
 
 ########################################################################################################################################
 ########################################################################################################################################
