@@ -44,7 +44,7 @@ def initialize_root_certificate():
 
         # Ask the user for a password to encode the private key
         while True:
-            print("Please enter a password for the private key (leave blank for no password)", flush=True)
+            print("Please enter a password for the root private key (leave blank for no password)", flush=True)
             pass1 = getpass()
             print("Please repeat your password", flush=True)
             pass2 = getpass()
@@ -107,7 +107,7 @@ def initialize_root_certificate():
 
     else:
         # Both the cert and the private key exist, load them
-        printlog("Private key and certificate found, loading them.")
+        printlog("Root private key and certificate found, loading them.")
 
         # Load the private key
         with open(root_pk_path, "rb") as f:
@@ -118,7 +118,7 @@ def initialize_root_certificate():
         except TypeError:
             # The file is encrypted, ask the user for the password
             while True:
-                print("Please, input the private key password:")
+                print("Please, input the root private key password:")
                 pkpass = getpass()
                 try:
                     key = load_pem_private_key(pk_bytes, bytes(pkpass, "utf-8"), default_backend())
