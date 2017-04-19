@@ -17,5 +17,5 @@ class NATPMPMappingResponse(BaseNATPMPResponse):
         return res
 
     def __str__(self):
-        return "<NAT-PMP RESPONSE> { version: %s, opcode: %s, result: %s, epoch: %s, addresses: %s, internal_port: %s, external_port: %s, lifetime: %s }" % \
-               (str(self.version), str(self.opcode), str(self.result), str(self.epoch), str(self.addresses), str(self.internal_port), str(self.external_port), str(self.lifetime))
+        return "<NAT-PMP RESPONSE> { version: %s, opcode: %s, result: %s, epoch: %s, internal_port: %s, external_port: %s, lifetime: %s }" % \
+               (str(self.version), str(self.opcode), str(self.result), str(self.epoch), str(self.internal_port), str(self.external_port), str(self.lifetime))
