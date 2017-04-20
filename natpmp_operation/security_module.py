@@ -5,11 +5,12 @@ from natpmp_operation.common_utils                  import printlog, get_future_
 from natpmp_operation.server_exceptions             import InvalidCertificateException, InvalidPacketSignatureException, MalformedPacketException
 
 from cryptography                                   import x509
+from cryptography.x509                              import DuplicateExtension, UnsupportedExtension, UnsupportedGeneralNameType, ExtensionNotFound
 from cryptography.hazmat.backends                   import default_backend
 from cryptography.hazmat.primitives                 import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric      import rsa, padding
 from cryptography.hazmat.primitives.serialization   import load_pem_private_key
-from cryptography.x509.oid                          import NameOID
+from cryptography.x509.oid                          import NameOID, ExtensionOID
 from cryptography.exceptions                        import InvalidSignature
 
 from apscheduler.schedulers.background              import BackgroundScheduler
@@ -176,8 +177,35 @@ def get_cert_from_bytes(byte_data):
     return cert
 
 
+# Checks if a certificate is issued for a specific IP address
+def is_cert_valid_for_ip(cert, ip):
+
+    # First, check if the IP is in the cert's common name field
+    cnames = [n.value for n in cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)]
+
+    if ip in cnames:
+        return True
+
+    # If it's not there, check if it is in the cert's alternative names in the extensions
+    try:
+        cert_extensions = cert.extensions
+    except (DuplicateExtension, UnsupportedExtension, UnsupportedGeneralNameType, UnicodeError):
+        # The extensions encoded in this cert are not valid
+        return False
+
+    # Grab the 'alternative names names' extension
+    try:
+        altnames_ext = cert_extensions.get_extension_for_oid(ExtensionOID.ISSUER_ALTERNATIVE_NAME)
+    except ExtensionNotFound:
+        # The cert does not have such extension
+        return False
+
+    # Return True if the address is in the alternative names list, False otherwise
+    return ip in [dns.value for dns in altnames_ext.value]
+
 # Signs byte_data using private_key and ciphers the data using public_key
 # Data is returned as per NAT-PMP custom v1 specification
+
 
 # cipher_with_rsa(signature_length (4 bytes) + signature + data)
 def sign_and_cipher_data(byte_data, public_key, private_key):

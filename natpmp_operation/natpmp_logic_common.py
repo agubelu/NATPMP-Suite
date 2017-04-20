@@ -257,7 +257,11 @@ def operation_exchange_certs(request):
         send_denied_handshake_response(request, NATPMP_RESULT_BAD_CERT)
         return
 
-    # TODO check that the address in the cert matches the one from the request
+    # Check that the cert matches the client's IP address
+    if not security_module.is_cert_valid_for_ip(cert, client_ip):
+        print("Denying handshake from %s: Certificate not valid for the client's IP." % client_ip)
+        send_denied_handshake_response(request, NATPMP_RESULT_BAD_CERT)
+        return
 
     # Send the response first (to not trigger deletion from TLS-enabled IPs)
     response = NATPMPCertHandshake.NATPMPCertHandshake(request.version, request.opcode + 128, NATPMP_RESULT_OK, security_module.ROOT_CERTIFICATE.public_bytes(serialization.Encoding.PEM))
@@ -439,6 +443,7 @@ def create_mapping(ip, port, proto, client, internal_port, lifetime):
 # Removes a mapping from the system
 def remove_mapping(ip, port, proto, reason):
     # TODO actually destroy the mapping in nftables
+
     del CURRENT_MAPPINGS[ip][port][proto]  # Remove the dict entry for this public IP, port and protocol
 
     if not CURRENT_MAPPINGS[ip][port]:
