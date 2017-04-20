@@ -43,7 +43,7 @@ def initialize_root_certificate():
     if os.path.exists(root_cert_path) and os.path.exists(root_pk_path):
 
         # Both the cert and the private key exist, load them
-        ROOT_KEY = load_private_key_asking_for_password(root_pk_path)
+        ROOT_KEY = load_private_key_asking_for_password(root_pk_path, "Please, input the password for the root private key:")
         ROOT_CERTIFICATE = load_certificate(root_cert_path)
 
     else:
@@ -308,11 +308,11 @@ def load_private_key(keypath, password):
 
 
 # Loads a private key, asking repeteadly for a password via console if it's encrypted
-def load_private_key_asking_for_password(keypath):
+def load_private_key_asking_for_password(keypath, msg="Please input the password for the private key:"):
     try:
         return load_private_key(keypath, None)
     except ValueError:
-        print("Please input the password for the private key:", flush=True)
+        print(msg, flush=True)
         while True:
             passw = getpass()
             try:
