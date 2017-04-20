@@ -41,7 +41,7 @@ def initialize_network_sockets():
         # Blocking call that will wait until a socket becomes available with data
         ready_sockets, _, _ = select.select(sockets, [], [])
         for sock in ready_sockets:
-            data, address = sock.recvfrom(4096)
+            data, address = sock.recvfrom(65536)
             process_received_packet(data, address, sock)
 
 

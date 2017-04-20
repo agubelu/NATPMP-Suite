@@ -9,7 +9,7 @@ from cryptography.x509                              import DuplicateExtension, U
 from cryptography.hazmat.backends                   import default_backend
 from cryptography.hazmat.primitives                 import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric      import rsa, padding
-from cryptography.hazmat.primitives.serialization   import load_pem_private_key
+from cryptography.hazmat.primitives.serialization   import load_pem_private_key, load_der_private_key
 from cryptography.x509.oid                          import NameOID, ExtensionOID
 from cryptography.exceptions                        import InvalidSignature
 
@@ -40,7 +40,13 @@ def initialize_root_certificate():
     root_cert_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "certs/root.crt")
     root_pk_path = os.path.join(os.path.dirname(root_cert_path), "root.key")
 
-    if not os.path.exists(root_cert_path) or not os.path.exists(root_pk_path):
+    if os.path.exists(root_cert_path) and os.path.exists(root_pk_path):
+
+        # Both the cert and the private key exist, load them
+        ROOT_KEY = load_private_key_asking_for_password(root_pk_path)
+        ROOT_CERTIFICATE = load_certificate(root_cert_path)
+
+    else:
         # Must create a new cert-key pair
         printlog("Root certificate and/or private key not found, creating new ones...")
 
@@ -65,16 +71,6 @@ def initialize_root_certificate():
 
         key_encr_algo = serialization.BestAvailableEncryption(bytes(pass1, "utf-8")) if len(pass1) > 0 else serialization.NoEncryption()
 
-        # Save the private key with 600 permissions
-        with open(root_pk_path, "wb") as f:
-            f.write(privkey.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.TraditionalOpenSSL,
-                encryption_algorithm=key_encr_algo
-            ))
-
-        os.chmod(root_pk_path, 0o600)
-
         # Now create the server's cert
         subject = issuer = x509.Name([
             x509.NameAttribute(NameOID.COUNTRY_NAME, u"ES"),
@@ -92,48 +88,29 @@ def initialize_root_certificate():
             .not_valid_before(datetime.utcnow()) \
             .not_valid_after(datetime.utcnow() + timedelta(days=365)) \
             .add_extension(
-                x509.SubjectAlternativeName([x509.DNSName("localhost")]),
-                critical=False,
-            ) \
-            .sign(privkey, hashes.SHA256(), default_backend())
+            x509.SubjectAlternativeName([x509.DNSName("localhost")]),
+            critical=False,
+        ).sign(privkey, hashes.SHA256(), default_backend())
 
         # Save the cert with 644 permissions
         with open(root_cert_path, "wb") as f:
-            f.write(root_cert.public_bytes(serialization.Encoding.PEM))
+            f.write(root_cert.public_bytes(serialization.Encoding.DER))
 
         os.chmod(root_cert_path, 0o644)
+
+        # Save the private key with 600 permissions
+        with open(root_pk_path, "wb") as f:
+            f.write(privkey.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=key_encr_algo
+            ))
+
+        os.chmod(root_pk_path, 0o600)
 
         # Load both into the module
         ROOT_CERTIFICATE = root_cert
         ROOT_KEY = privkey
-
-    else:
-        # Both the cert and the private key exist, load them
-        printlog("Root private key and certificate found, loading them.")
-
-        # Load the private key
-        with open(root_pk_path, "rb") as f:
-            pk_bytes = f.read()
-
-        try:
-            key = load_pem_private_key(pk_bytes, None, default_backend())
-        except TypeError:
-            # The file is encrypted, ask the user for the password
-            while True:
-                print("Please, input the root private key password:")
-                pkpass = getpass()
-                try:
-                    key = load_pem_private_key(pk_bytes, bytes(pkpass, "utf-8"), default_backend())
-                    break
-                except ValueError:
-                    print("The password is not correct, please try again.")
-
-        # Load the cert
-        with open(root_cert_path, "rb") as f:
-            cert_bytes = f.read()
-
-        ROOT_KEY = key
-        ROOT_CERTIFICATE = x509.load_pem_x509_certificate(cert_bytes, default_backend())
 
 
 # Given a bytes object, returns a valid certificate or raises InvalidCertificateException otherwise.
@@ -296,3 +273,66 @@ def remove_ip_from_tls_enabled(ip_addr, auto=False):
         del TLS_IPS[ip_addr]
 
         printlog("Removing %s from TLS-enabled IPs" % ip_addr)
+
+##########################################################################################################
+##########################################################################################################
+##########################################################################################################
+# Utility functions for loading private keys and certs
+
+
+# Load a private key in PEM or DER format
+# Raises ValueError if the password is not correct
+def load_private_key(keypath, password):
+
+    # Load the private key
+    with open(keypath, "rb") as f:
+        pk_bytes = f.read()
+
+    passbytes = None if password is None else bytes(password, "utf-8")
+
+    # Try to decode it in both formats with the provided password
+    try:
+        key = load_pem_private_key(pk_bytes, passbytes, default_backend())
+    except ValueError:
+        # The key could not be decoded, try in DER
+        try:
+            key = load_der_private_key(pk_bytes, passbytes, default_backend())
+        except TypeError:
+            # The password is not correct
+            raise ValueError
+    except TypeError:
+        # The password is not correct
+        raise ValueError
+
+    return key
+
+
+# Loads a private key, asking repeteadly for a password via console if it's encrypted
+def load_private_key_asking_for_password(keypath):
+    try:
+        return load_private_key(keypath, None)
+    except ValueError:
+        print("Please input the password for the private key:", flush=True)
+        while True:
+            passw = getpass()
+            try:
+                return load_private_key(keypath, passw)
+            except ValueError:
+                print("Password is not correct, please try again.", flush=True)
+
+
+# Load a certificate in PEM or DER format
+# Raises ValueError if its not valid
+def load_certificate(certpath):
+
+    # Load the private key
+    with open(certpath, "rb") as f:
+        byte_data = f.read()
+
+    # Try to decode the cert from the byte data
+    try:
+        cert = x509.load_pem_x509_certificate(byte_data, default_backend())
+    except ValueError:
+        cert = x509.load_der_x509_certificate(byte_data, default_backend())
+
+    return cert

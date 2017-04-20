@@ -13,9 +13,7 @@ from datetime                                   import datetime, timedelta
 from getpass                                    import getpass
 
 import sys
-import socket
 import os
-import re
 
 
 def create_cert(ip, seconds, der):
@@ -73,7 +71,6 @@ def create_cert(ip, seconds, der):
         ) \
         .sign(security_module.ROOT_KEY, hashes.SHA256(), default_backend())
 
-    # Save the key with 600 permissions
     key_encr_algo = serialization.BestAvailableEncryption(bytes(pass1, "utf-8")) if len(pass1) > 0 else serialization.NoEncryption()
     encoding = serialization.Encoding.DER if der else serialization.Encoding.PEM
 
