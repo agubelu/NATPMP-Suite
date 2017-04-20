@@ -92,5 +92,4 @@ class NATPMPRequest(BaseNATPMPPacket):
 
     def __str__(self):
         return "<NAT-PMP REQUEST> { version: %s, opcode: %s, reserved: %s, internal_port: %s, external_port: %s, requested_lifetime: %s, ipv4s: %s }" % \
-               (str(self.version), str(self.opcode), str(self.reserved), str(self.internal_port), str(self.external_port), str(self.requested_lifetime), str(self.ipv4_addresses)
-                )
+               (str(self.version), str(self.opcode), str(self.reserved), str(self.internal_port), str(self.external_port), str(self.requested_lifetime), str(self.ipv4_addresses))

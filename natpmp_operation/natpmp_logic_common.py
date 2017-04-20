@@ -266,6 +266,7 @@ def operation_exchange_certs(request):
     # Send the response first (to not trigger deletion from TLS-enabled IPs)
     response = NATPMPCertHandshake.NATPMPCertHandshake(request.version, request.opcode + 128, NATPMP_RESULT_OK, security_module.ROOT_CERTIFICATE.public_bytes(serialization.Encoding.PEM))
     send_response(response)
+    printlog("Accepting handshake for %s" % client_ip)
 
     # Then add the cert to the TLS-allowed IPs
     security_module.add_ip_to_tls_enabled(client_ip, cert)

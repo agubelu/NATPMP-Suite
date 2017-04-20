@@ -81,7 +81,7 @@ def send_response(response):
         response_data = security_module.sign_and_cipher_data(response.to_bytes(), security_module.TLS_IPS[client_ip]['cert'].public_key(), security_module.ROOT_KEY)
         security_module.remove_ip_from_tls_enabled(client_ip)
     else:
-        response_data = response.to_bytes
+        response_data = response.to_bytes()
 
     response.sock.sendto(response_data, response.address)
 

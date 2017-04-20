@@ -68,7 +68,7 @@ def check_ok_settings(namespace):
         print("Warning: specifying public IPs when sending a v0 request will have no effect.")
 
     # If -l is set, check that it's a positive integer
-    if namespace.l <= 0:
+    if namespace.l < 0:
         sys.exit("The lifetime must be a positive amount.")
 
     if namespace.v1 and namespace.req and not namespace.ips:

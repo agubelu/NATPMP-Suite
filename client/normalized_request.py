@@ -1,7 +1,10 @@
 # Used to normalized requests from both the command line and the graphical interface into a common object
 # that will be mapped into NAT-PMP requests.
 
-from natpmp_operation import natpmp_logic_common
+from natpmp_operation                       import natpmp_logic_common
+
+from natpmp_packets.NATPMPCertHandshake     import NATPMPCertHandshake
+from natpmp_packets.NATPMPRequest           import NATPMPRequest
 
 
 # Return a CommonClientRequest from a command namespace processed from the command line
@@ -49,3 +52,19 @@ class CommonClientRequest:
         return "< Normalized request: ver=%s, opcode=%s, private_port=%s, public_port=%s, lifetime=%s, public_ips=%s, use_tls=%s, tls_cert=%s, tls_key=%s, router=%s >" % \
                 (str(self.version), str(self.opcode), str(self.private_port), str(self.public_port), str(self.lifetime),
                  str(self.public_ips), self.use_tls, str(self.tls_cert), str(self.tls_key), self.router_addr)
+
+    def to_request_object(self):
+        if self.opcode == natpmp_logic_common.NATPMP_OPCODE_SENDCERT:
+            # Current request is a cert handshake
+            return NATPMPCertHandshake(self.version, self.opcode, 0, self.tls_cert.read())
+        elif self.opcode == natpmp_logic_common.NATPMP_OPCODE_INFO:
+            # Current request is a info request
+            return NATPMPRequest(self.version, self.opcode)
+
+        # Else, it is a standard NAT-PMP request
+        if self.version == 0:
+            # V0 without external ips
+            return NATPMPRequest(self.version, self.opcode, 0, self.private_port, self.public_port, self.lifetime)
+        else:
+            # V1 with external ips
+            return NATPMPRequest(self.version, self.opcode, 0, self.private_port, self.public_port, self.lifetime, self.public_ips)
