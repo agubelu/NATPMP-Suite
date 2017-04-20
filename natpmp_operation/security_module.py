@@ -20,7 +20,7 @@ import os
 import settings
 
 
-CERT_CACHE_TIME = 60  # Seconds
+CERT_CACHE_TIME = 30  # Seconds
 ROOT_CERTIFICATE = None
 ROOT_KEY = None
 
@@ -187,6 +187,9 @@ def is_cert_valid_for_ip(cert, ip):
 # cipher_with_rsa(signature_length (4 bytes) + signature + data)
 def sign_and_cipher_data(byte_data, public_key, private_key):
 
+    if type(byte_data) is bytearray:
+        byte_data = bytes(byte_data)
+
     signature = private_key.sign(
         byte_data,
         padding.PSS(
@@ -216,6 +219,9 @@ def sign_and_cipher_data(byte_data, public_key, private_key):
 
 # Deciphers ciphered using private_key and checks the signature against public_key
 def decipher_and_check_signature(ciphered, private_key, public_key):
+
+    if type(ciphered) is bytearray:
+        ciphered = bytes(ciphered)
 
     if len(ciphered) < 10:
         raise MalformedPacketException("Ciphered packet is too short")
@@ -263,7 +269,7 @@ def add_ip_to_tls_enabled(ip_addr, cert):
     else:
         job = enabled_ips_scheduler.add_job(remove_ip_from_tls_enabled, trigger=autoremoval_trigger, args=(ip_addr, True))
         TLS_IPS[ip_addr] = {'cert': cert, 'job': job}
-        printlog("Adding %s in TLS-enabled IPs" % ip_addr)
+        printlog("Adding %s to TLS-enabled IPs" % ip_addr)
 
 
 def remove_ip_from_tls_enabled(ip_addr, auto=False):
@@ -272,7 +278,10 @@ def remove_ip_from_tls_enabled(ip_addr, auto=False):
             TLS_IPS[ip_addr]['job'].remove()
         del TLS_IPS[ip_addr]
 
-        printlog("Removing %s from TLS-enabled IPs" % ip_addr)
+        logtext = "Removing %s from TLS-enabled IPs" % ip_addr
+        if auto:
+            logtext += " (timed out)"
+        printlog(logtext)
 
 ##########################################################################################################
 ##########################################################################################################

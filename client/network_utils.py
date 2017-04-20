@@ -30,6 +30,8 @@ def send_and_receive_with_timeout(sock, dst_ip, data, timeout):
 # Sends a request to the server and grabs the response
 # It waits an initial delay of 500ms and then doubles for every failed request
 # until it waits 64 s and then gives up.
+
+# Raises ConnectionRefusedError if the destination port is not available.
 def send_request_get_response(dst_ip, data, raw=False):
     # Create the socket
     udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -42,10 +44,7 @@ def send_request_get_response(dst_ip, data, raw=False):
     byte_data = data if raw else data.to_bytes()
 
     while True:
-        try:
-            data_response, address_response = send_and_receive_with_timeout(udp_sock, dst_ip, byte_data, initial_delay * pow(2, retries))
-        except ConnectionRefusedError:
-            return None  # ICMP Port Unreachable
+        data_response, address_response = send_and_receive_with_timeout(udp_sock, dst_ip, byte_data, initial_delay * pow(2, retries))
 
         if address_response is not None and address_response[0] != dst_ip:
             # The response was sent by someone different than the router, try again

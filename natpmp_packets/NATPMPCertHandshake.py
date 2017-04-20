@@ -27,7 +27,7 @@ class NATPMPCertHandshake(BaseNATPMPPacket):
         res = bytearray()
         res += self.version.to_bytes(1, 'big')
         res += self.opcode.to_bytes(1, 'big')
-        res += self.reserved.to_bytes(1, 'big')
+        res += self.reserved.to_bytes(2, 'big')
         res += self.cert_bytes
 
         return res
