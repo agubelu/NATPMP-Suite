@@ -1,6 +1,7 @@
 # Utility for creating certificates for clients, signed with the root key.
 
 from natpmp_operation                           import security_module
+from natpmp_operation.common_utils              import is_valid_ip_string
 
 from cryptography                               import x509
 from cryptography.hazmat.backends               import default_backend
@@ -115,11 +116,7 @@ Usage: create-cert.py client_ip lifetime [-der]
     lifetime = args[1]
 
     # Check that the IP is OK
-    try:
-        if not re.compile("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}").match(client_ip):
-            raise IOError
-        socket.inet_aton(client_ip)
-    except IOError:
+    if not is_valid_ip_string(client_ip):
         sys.exit("The client IP address is not a valid IP.")
 
     # Check that the lifetime is OK
