@@ -149,7 +149,7 @@ def assert_settings_ok():
 
     # Raise a warning if TLS is forced but TLS is not enabled
     if settings.FORCE_TLS_IN_V1 and not settings.ALLOW_TLS_IN_V1:
-        printerr("Warning: Force TLS is enabled but TLS itself is not. This configuration parameter will have no effect.")
+        sys.exit("Error: Force TLS is enabled but TLS itself is not. Clients will not be able to issue requests for V1.")
 
     # Raise a warning if strict certs are enabled but version 1 isn't
     if settings.STRICT_CERTIFICATE_CHECKING and not settings.ALLOW_VERSION_1:

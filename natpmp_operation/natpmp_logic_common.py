@@ -374,10 +374,11 @@ def check_client_authorization(request, handshake=False):
         else:
             # Handshake response
             send_denied_handshake_response(request, NATPMP_RESULT_NOT_AUTHORIZED)
+
         printlog("Rejecting request from %s: not authorized." % ip_addr)
         return False
 
-    if not handshake and settings.FORCE_TLS_IN_V1 and ip_addr not in security_module.TLS_IPS:
+    if not handshake and settings.FORCE_TLS_IN_V1 and request.version == 1 and ip_addr not in security_module.TLS_IPS:
         # If the current request is not a handshake, TLS is enforced, and the issuer has not still sent a handshake, deny the response
         send_denied_response(request, NATPMP_RESULT_TLS_ONLY)
         printlog("Rejecting request from %s: plain-text request while TLS is enforced." % ip_addr)
