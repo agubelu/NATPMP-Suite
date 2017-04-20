@@ -1,4 +1,5 @@
 from natpmp_operation.common_utils  import is_valid_ip_string
+from client.network_utils           import get_default_router_address
 
 import argparse
 import sys
@@ -7,6 +8,7 @@ import sys
 def process_command_line_params():
     namespace = get_commands_namespace()
     check_ok_settings(namespace)
+    return namespace
 
 
 # Processes the client command-line params, returns a namespace object
@@ -59,9 +61,18 @@ def check_ok_settings(namespace):
         if namespace.req[2].upper() not in ['TCP', 'UDP']:
             sys.exit("The protocol for the mapping must be either TCP or UDP")
 
+    if namespace.tls and namespace.v0:
+        sys.exit("NAT-PMP v0 does not support secure requests.")
+
+    if namespace.ips and namespace.v0:
+        print("Warning: specifying public IPs when sending a v0 request will have no effect.")
+
     # If -l is set, check that it's a positive integer
     if namespace.l <= 0:
         sys.exit("The lifetime must be a positive amount.")
+
+    if namespace.v1 and namespace.req and not namespace.ips:
+        sys.exit("Must specify IPv4 addresses to map ports into when issuing a v1 request.")
 
     # If -ips is set, check that all of them are valid
     if namespace.ips is not None:
@@ -73,3 +84,5 @@ def check_ok_settings(namespace):
     if namespace.g is not None:
         if not is_valid_ip_string(namespace.g):
             sys.exit("IP address %s from -g is not a valid address." % namespace.g)
+    else:
+        namespace.g = get_default_router_address()
