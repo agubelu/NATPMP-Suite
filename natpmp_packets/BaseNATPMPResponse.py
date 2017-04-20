@@ -9,7 +9,7 @@ class BaseNATPMPResponse(BaseNATPMPPacket):
         self.version = version
         self.opcode = opcode
         self.result = result
-        from natpmp import DAEMON_START_TIME
+        from natpmp_daemon import DAEMON_START_TIME
         self.epoch = int(time.time() - DAEMON_START_TIME)
 
     def to_bytes(self):

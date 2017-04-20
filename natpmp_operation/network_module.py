@@ -30,7 +30,7 @@ def initialize_network_sockets():
 
         printlog("Created socket on %s:%d" % (ip, NATPMP_PORT))
 
-    from natpmp import DAEMON_START_TIME
+    from natpmp_daemon import DAEMON_START_TIME
     printlog("Daemon started at timestamp %s" % DAEMON_START_TIME)
 
     # Send the gratuitous multicast info at startup
