@@ -13,7 +13,7 @@ import sys
 
 if __name__ == "__main__":
 
-    if "gui" in sys.argv:
+    if "gui" in sys.argv or len(sys.argv) == 1:
         pass  # TODO launch the client GUI
     else:
         # Get the namespace from the command line
