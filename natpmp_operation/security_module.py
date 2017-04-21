@@ -9,6 +9,7 @@ from cryptography.x509                              import DuplicateExtension, U
 from cryptography.hazmat.backends                   import default_backend
 from cryptography.hazmat.primitives                 import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric      import rsa, padding
+from cryptography.hazmat.primitives.ciphers         import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.serialization   import load_pem_private_key, load_der_private_key
 from cryptography.x509.oid                          import NameOID, ExtensionOID
 from cryptography.exceptions                        import InvalidSignature
@@ -180,18 +181,21 @@ def is_cert_valid_for_ip(cert, ip):
     # Return True if the address is in the alternative names list, False otherwise
     return ip in [dns.value for dns in altnames_ext.value]
 
+
 # Signs byte_data using private_key and ciphers the data using public_key
 # Data is returned as per NAT-PMP custom v1 specification
 
-
-# cipher_with_rsa(signature_length (4 bytes) + signature + data)
-def sign_and_cipher_data(byte_data, public_key, private_key):
+def sign_and_cipher_data_with_nonce(byte_data, public_key, private_key, nonce):
 
     if type(byte_data) is bytearray:
         byte_data = bytes(byte_data)
 
+    # Prepend the nonce to the data to be signed
+    data_to_sign = nonce + byte_data
+
+    # Sign the data with the nonce
     signature = private_key.sign(
-        byte_data,
+        data_to_sign,
         padding.PSS(
             mgf=padding.MGF1(hashes.SHA256()),
             salt_length=padding.PSS.MAX_LENGTH,
@@ -199,14 +203,28 @@ def sign_and_cipher_data(byte_data, public_key, private_key):
         hashes.SHA256()
     )
 
-    signature_length = len(signature)
+    # Will cipher using AES both the data and the signature
+    data_to_cipher = signature + nonce + byte_data
 
-    res = signature_length.to_bytes(4, 'big')
-    res += signature
-    res += byte_data
+    # Add padding until the plain data is congruent with 120 bytes, then prepend the amount of padded bytes
+    padding_amount = 0
+    while len(data_to_cipher) % 16 != 15:
+        padding_amount += 1
+        data_to_cipher += bytes(1)
 
-    ciphered = public_key.encrypt(
-        res,
+    data_to_cipher = padding_amount.to_bytes(1, 'big') + data_to_cipher
+
+    aes_key = os.urandom(16)
+    aes_iv = os.urandom(16)
+
+    # Cipher the data with AES
+    cipher = Cipher(algorithms.AES(aes_key), modes.CBC(aes_iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    ciphered_data = encryptor.update(data_to_cipher) + encryptor.finalize()
+
+    # Cipher the AES key with RSA
+    ciphered_key = public_key.encrypt(
+        aes_key,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
@@ -214,20 +232,34 @@ def sign_and_cipher_data(byte_data, public_key, private_key):
         )
     )
 
-    return ciphered
+    # Send the AES IV, the ciphered key and the ciphered data
+    return aes_iv + ciphered_key + ciphered_data
 
 
-# Deciphers ciphered using private_key and checks the signature against public_key
-def decipher_and_check_signature(ciphered, private_key, public_key):
+# Deciphers ciphered using private_key and checks the signature against public_key as well as the nonce
+def decipher_and_check_signature_and_nonce(ciphered, private_key, public_key, nonce):
 
     if type(ciphered) is bytearray:
         ciphered = bytes(ciphered)
 
-    if len(ciphered) < 10:
+    if len(ciphered) < 30:
         raise MalformedPacketException("Ciphered packet is too short")
 
-    deciphered = private_key.decrypt(
-        ciphered,
+    signature_size = get_encoded_length(public_key)
+    encoded_size = get_encoded_length(private_key)
+
+    # Get the AES IV, the first 16 bytes
+    aes_iv = ciphered[0:16]
+
+    # Get the cipherred AES key
+    ciphered_aes_key = ciphered[16:16+encoded_size]
+
+    # Get the AES-ciphered data
+    ciphered_data = ciphered[16+encoded_size:]
+
+    # Decipher the AES key
+    aes_key = private_key.decrypt(
+        ciphered_aes_key,
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
@@ -235,14 +267,26 @@ def decipher_and_check_signature(ciphered, private_key, public_key):
         )
     )
 
-    signature_length = int.from_bytes(deciphered[0:4], 'big')
-    signature = deciphered[4:signature_length + 4]
-    plain_data = deciphered[signature_length + 4:]
+    # Decipher the data
+    cipher = Cipher(algorithms.AES(aes_key), modes.CBC(aes_iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+    plain_data = decryptor.update(ciphered_data) + decryptor.finalize()
 
+    # Get the padding amount, signature, nonce and plain request
+    padded_amount = plain_data[0]
+    signature = plain_data[1:signature_size+1]
+    sent_nonce = plain_data[signature_size+1:signature_size+9]
+    request = plain_data[signature_size+9:len(plain_data) - padded_amount]
+
+    # Check that the nonce matches
+    if nonce != sent_nonce:
+        raise MalformedPacketException("The nonces do not match.")
+
+    # Check the signature
     try:
         public_key.verify(
             signature,
-            plain_data,
+            sent_nonce + request,
             padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
                 salt_length=padding.PSS.MAX_LENGTH,
@@ -252,14 +296,14 @@ def decipher_and_check_signature(ciphered, private_key, public_key):
     except InvalidSignature:
         raise InvalidPacketSignatureException("The received packet's signature is not valid.")
 
-    return plain_data
+    return request
 
 ##########################################################################################################
 ##########################################################################################################
 ##########################################################################################################
 
 
-def add_ip_to_tls_enabled(ip_addr, cert):
+def add_ip_to_tls_enabled(ip_addr, cert, nonce):
     autoremoval_trigger = DateTrigger(get_future_date(CERT_CACHE_TIME))
 
     # If it's already in the dict, update the removal time
@@ -268,7 +312,7 @@ def add_ip_to_tls_enabled(ip_addr, cert):
         printlog("Renewing %s in TLS-enabled IPs" % ip_addr)
     else:
         job = enabled_ips_scheduler.add_job(remove_ip_from_tls_enabled, trigger=autoremoval_trigger, args=(ip_addr, True))
-        TLS_IPS[ip_addr] = {'cert': cert, 'job': job}
+        TLS_IPS[ip_addr] = {'cert': cert, 'job': job, 'nonce': nonce}
         printlog("Adding %s to TLS-enabled IPs" % ip_addr)
 
 
@@ -345,3 +389,11 @@ def load_certificate(certpath):
         cert = x509.load_der_x509_certificate(byte_data, default_backend())
 
     return cert
+
+
+def get_encoded_length(key):
+    # Returns the length in bytes for encoded data and signatures in RSA (EC not supported)
+    try:
+        return key.key_size // 8
+    except AttributeError:
+        raise MalformedPacketException("Asymmetric algorithm not currently supported")

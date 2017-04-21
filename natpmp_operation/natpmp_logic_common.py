@@ -15,6 +15,7 @@ from natpmp_packets.NATPMPInfoResponse      import NATPMPInfoResponse
 from natpmp_packets.NATPMPMappingResponse   import NATPMPMappingResponse
 
 import settings
+import os
 
 
 # Constants definition
@@ -67,7 +68,7 @@ def process_request(request):
 
     req_ver = request.version
     # Check that the requested version is enabled, return the corresponding response if it is not
-    if req_ver == 1 and not settings.ALLOW_VERSION_1 or req_ver == 0 and not settings.ALLOW_VERSION_0:
+    if not 0 <= req_ver <= 1 or (req_ver == 1 and not settings.ALLOW_VERSION_1 or req_ver == 0 and not settings.ALLOW_VERSION_0):
         response = BaseNATPMPResponse(request.version, request.opcode + 128, NATPMP_RESULT_VERSION_NOT_SUPPORTED)
         response.sock = request.sock
         response.address = request.address
@@ -264,14 +265,15 @@ def operation_exchange_certs(request):
         return
 
     # Send the response first (to not trigger deletion from TLS-enabled IPs)
-    response = NATPMPCertHandshake.NATPMPCertHandshake(request.version, request.opcode + 128, NATPMP_RESULT_OK, security_module.ROOT_CERTIFICATE.public_bytes(serialization.Encoding.PEM))
+    client_nonce = os.urandom(8)
+    response = NATPMPCertHandshake.NATPMPCertHandshake(request.version, request.opcode + 128, NATPMP_RESULT_OK, client_nonce, security_module.ROOT_CERTIFICATE.public_bytes(serialization.Encoding.PEM))
     response.sock = request.sock
     response.address = request.address
     send_response(response)
     printlog("Accepting handshake for %s" % client_ip)
 
     # Then add the cert to the TLS-allowed IPs
-    security_module.add_ip_to_tls_enabled(client_ip, cert)
+    security_module.add_ip_to_tls_enabled(client_ip, cert, client_nonce)
 
 ########################################################################################################################################
 ########################################################################################################################################

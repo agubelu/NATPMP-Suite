@@ -53,7 +53,10 @@ def process_received_packet(data, address, sock):
         if address[0] in security_module.TLS_IPS:
             # Decipher the data and check the packet signature
             try:
-                data = security_module.decipher_and_check_signature(data, security_module.ROOT_KEY, security_module.TLS_IPS[address[0]]['cert'].public_key())
+                ip_tls = security_module.TLS_IPS[address[0]]
+                data = security_module.decipher_and_check_signature_and_nonce(data, security_module.ROOT_KEY,
+                                                                              ip_tls['cert'].public_key(),
+                                                                              ip_tls['nonce'])
             except ValueError:
                 raise MalformedPacketException("Malformed secure packet")
 
@@ -81,7 +84,9 @@ def send_response(response):
 
     # If the client sent the request through a secure packet, answer them the same way and remove it from the list (must handshake again)
     if client_ip in security_module.TLS_IPS:
-        response_data = security_module.sign_and_cipher_data(response.to_bytes(), security_module.TLS_IPS[client_ip]['cert'].public_key(), security_module.ROOT_KEY)
+        ip_data = security_module.TLS_IPS[client_ip]
+        response_data = security_module.sign_and_cipher_data_with_nonce(response.to_bytes(), ip_data['cert'].public_key(),
+                                                             security_module.ROOT_KEY, ip_data['nonce'])
         security_module.remove_ip_from_tls_enabled(client_ip)
     else:
         response_data = response.to_bytes()
