@@ -42,5 +42,5 @@ if __name__ == "__main__":
 
             encr_data = sign_and_cipher_data_with_nonce(req_norm.to_request_object().to_bytes(), cert.public_key(), key, nonce)
             data2 = send_request_get_response(req_norm.router_addr, encr_data, raw=True)
-
-        #resp = send_request_get_response(req_norm.router_addr, req_norm.to_request_object())
+        else:
+            send_request_get_response(req_norm.router_addr, req_norm.to_request_object())
