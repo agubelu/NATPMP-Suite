@@ -16,6 +16,7 @@ from natpmp_packets.NATPMPMappingResponse   import NATPMPMappingResponse
 
 import settings
 import os
+import pprint
 
 
 # Constants definition
@@ -443,7 +444,7 @@ def create_mapping(ip, port, proto, client, internal_port, lifetime):
         CURRENT_MAPPINGS[ip][port][proto] = {'job': job, 'client': client, 'internal_port': internal_port}
         printlog("Creating %s mapping for %s:%d -> %s:%d, expiration time is %s" % (proto, ip, port, client, internal_port, str(expiration_date)))
 
-    print(CURRENT_MAPPINGS)
+    pprint.pprint(CURRENT_MAPPINGS)
 
 
 # Removes a mapping from the system
@@ -456,4 +457,4 @@ def remove_mapping(ip, port, proto, reason):
         del CURRENT_MAPPINGS[ip][port]  # If there are no more mappings for that port, remove it from the dict as well
 
     printlog("Removing mapping for %s:%d %s (%s)" % (ip, port, proto, reason))
-    print(CURRENT_MAPPINGS)
+    pprint.pprint(CURRENT_MAPPINGS)
