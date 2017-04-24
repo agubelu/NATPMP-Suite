@@ -15,6 +15,8 @@ from natpmp_operation.natpmp_logic_common   import NATPMP_RESULT_VERSION_NOT_SUP
                                                    NATPMP_RESULT_OK, NATPMP_RESULT_OPCODE_NOT_SUPPORTED, NATPMP_RESULT_TLS_ONLY, NATPMP_OPCODE_INFO, \
                                                    NATPMP_OPCODE_MAPTCP, NATPMP_OPCODE_MAPUDP
 
+from datetime                               import datetime, timedelta
+
 import sys
 
 
@@ -124,4 +126,4 @@ if __name__ == "__main__":
         elif original_opcode in [NATPMP_OPCODE_MAPUDP, NATPMP_OPCODE_MAPTCP]:
             print("Internal port: %d" % response_object.internal_port)
             print("External port: %d" % response_object.external_port)
-            print("Lifetime (seconds): %d" % response_object.lifetime)
+            print("Lifetime (seconds): %d (expires at %s)" % (response_object.lifetime, (datetime.now() - timedelta(seconds=response_object.lifetime)).strftime("%Y-%m-%d %H:%M:%S")))

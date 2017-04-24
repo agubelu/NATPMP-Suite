@@ -446,12 +446,12 @@ def create_mapping(ip, port, proto, client, internal_port, lifetime):
     # The mapping already exists (the dict is not empty), update the expiration time
     if CURRENT_MAPPINGS[ip][port][proto]:
         CURRENT_MAPPINGS[ip][port][proto]['job'].reschedule(DateTrigger(expiration_date))
-        printlog("Updating mapping for %s:%d %s per %s request, new expiration time is %s" % (ip, port, proto, client, str(expiration_date)))
+        printlog("Updating mapping for %s:%d %s per %s request, new expiration time is %s" % (ip, port, proto, client, expiration_date.strftime("%Y-%m-%d %H:%M:%S")))
     # The mapping does not exist in the dict, create the job
     else:
         job = mapping_scheduler.add_job(remove_mapping, trigger=DateTrigger(expiration_date), args=(ip, port, proto, 'lifetime terminated'))
         CURRENT_MAPPINGS[ip][port][proto] = {'job': job, 'client': client, 'internal_port': internal_port}
-        printlog("Creating %s mapping for %s:%d -> %s:%d, expiration time is %s" % (proto, ip, port, client, internal_port, str(expiration_date)))
+        printlog("Creating %s mapping for %s:%d -> %s:%d, expiration time is %s" % (proto, ip, port, client, internal_port, expiration_date.strftime("%Y-%m-%d %H:%M:%S")))
 
     pprint.pprint(CURRENT_MAPPINGS)
 
