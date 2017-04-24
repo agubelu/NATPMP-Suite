@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import time
 
 from natpmp_operation                   import security_module

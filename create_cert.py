@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Utility for creating certificates for clients, signed with the root key.
 
 from natpmp_operation                           import security_module

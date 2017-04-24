@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from client.command_processor               import process_command_line_params
 from client                                 import normalized_request
 from client.network_utils                   import send_request_get_response
