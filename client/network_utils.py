@@ -54,6 +54,8 @@ def send_request_get_response(dst_ip, data, raw=False):
             return data_response
 
         retries += 1
+        print("Server did not reply, trying again...")
+
         if retries == 8:
             break
 

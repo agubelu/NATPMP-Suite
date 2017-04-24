@@ -3,8 +3,9 @@
 
 from natpmp_operation                       import natpmp_logic_common
 
-from natpmp_packets.NATPMPCertHandshake     import NATPMPCertHandshake
 from natpmp_packets.NATPMPRequest           import NATPMPRequest
+from natpmp_packets                         import BaseNATPMPResponse, NATPMPInfoResponse, NATPMPMappingResponse, NATPMPCertHandshake
+from natpmp_operation.server_exceptions     import MalformedPacketException
 
 
 # Return a CommonClientRequest from a command namespace processed from the command line
@@ -34,6 +35,26 @@ def from_namespace(namespace):
     return CommonClientRequest(version, opcode, priv_port, pub_port, lifetime, public_ips, use_tls, tls_cert, tls_key, router)
 
 
+# Returns the adequate Response object for the bytes received by the server
+def server_bytes_to_object(byte_data):
+    if len(byte_data) < 4:
+        raise MalformedPacketException("Data received from server is too short")
+
+    opcode = byte_data[1]
+    result = int.from_bytes(byte_data[2:4], 'big')
+
+    if result == natpmp_logic_common.NATPMP_RESULT_VERSION_NOT_SUPPORTED:
+        return BaseNATPMPResponse.from_bytes(byte_data)
+    elif result == natpmp_logic_common.NATPMP_RESULT_OPCODE_NOT_SUPPORTED:
+        return BaseNATPMPResponse.BaseNATPMPResponse(byte_data[0], opcode, result)
+    elif opcode - 128 == natpmp_logic_common.NATPMP_OPCODE_INFO:
+        return NATPMPInfoResponse.from_bytes(byte_data)
+    elif opcode - 128 == natpmp_logic_common.NATPMP_OPCODE_SENDCERT:
+        return NATPMPCertHandshake.from_bytes(byte_data)
+    elif opcode - 128 in [natpmp_logic_common.NATPMP_OPCODE_MAPUDP, natpmp_logic_common.NATPMP_OPCODE_MAPTCP]:
+        return NATPMPMappingResponse.from_bytes(byte_data)
+
+
 class CommonClientRequest:
 
     def __init__(self, version, opcode, private_port, public_port, lifetime, public_ips, use_tls, tls_cert, tls_key, router_addr):
@@ -56,7 +77,7 @@ class CommonClientRequest:
     def to_request_object(self):
         if self.opcode == natpmp_logic_common.NATPMP_OPCODE_SENDCERT:
             # Current request is a cert handshake
-            return NATPMPCertHandshake(self.version, self.opcode, 0, self.tls_cert.read())
+            return NATPMPCertHandshake.NATPMPCertHandshake(self.version, self.opcode, 0, self.tls_cert.read())
         elif self.opcode == natpmp_logic_common.NATPMP_OPCODE_INFO:
             # Current request is a info request
             return NATPMPRequest(self.version, self.opcode)
