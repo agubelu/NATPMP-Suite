@@ -105,17 +105,21 @@ def process_request(request):
 
 # Returns information regarding the public interfaces available for mapping
 def operation_get_info(request):
-    ip_addresses = settings.PUBLIC_INTERFACES if request.version == 1 else settings.PUBLIC_INTERFACES[0]
+    if not check_client_authorization(request):
+        return
+
+    ip_addresses = settings.PUBLIC_INTERFACES if request.version == 1 else [settings.PUBLIC_INTERFACES[0]]
     response = NATPMPInfoResponse(request.version, request.opcode + 128, NATPMP_RESULT_OK, ip_addresses)
     response.address = request.address
     response.sock = request.sock
-    send_response(response)
 
     printlog("Discovery request from %s, version %d" % (request.address, request.version))
+    send_response(response)
 
 
 # Tries to perform a port mapping operation
 def operation_do_mapping(request):
+    #TODO si todos existen y tienen el mismo puerto publico y privado, hacerlo para multi-ip
     if not check_client_authorization(request):
         return
 
@@ -148,8 +152,8 @@ def operation_do_mapping(request):
 
             # Check that there is a port available for the client
             if ext_port is None:
-                send_denied_response(request, NATPMP_RESULT_INSUFFICIENT_RESOURCES)
                 printlog("Denying request from %s: not enough free external ports." % client_ip)
+                send_denied_response(request, NATPMP_RESULT_INSUFFICIENT_RESOURCES)
                 return
 
             # At this point, the client can map into the requested port
@@ -186,8 +190,8 @@ def operation_do_mapping(request):
 
             # Check that there is a port available for the client
             if ext_port is None:
-                send_denied_response(request, NATPMP_RESULT_INSUFFICIENT_RESOURCES)
                 printlog("Denying request from %s: not enough free external ports." % client_ip)
+                send_denied_response(request, NATPMP_RESULT_INSUFFICIENT_RESOURCES)
                 return
 
             # At this point, the client can map into the requested port
@@ -374,6 +378,8 @@ def check_client_authorization(request, handshake=False):
         or (settings.WHITELIST_MODE and ip_addr in settings.WHITELISTED_IPS)
 
     if not auth:
+        printlog("Rejecting request from %s: not authorized." % ip_addr)
+
         if not handshake:
             # Standard mapping response
             send_denied_response(request, NATPMP_RESULT_NOT_AUTHORIZED)
@@ -381,13 +387,12 @@ def check_client_authorization(request, handshake=False):
             # Handshake response
             send_denied_handshake_response(request, NATPMP_RESULT_NOT_AUTHORIZED)
 
-        printlog("Rejecting request from %s: not authorized." % ip_addr)
         return False
 
     if not handshake and settings.FORCE_TLS_IN_V1 and request.version == 1 and ip_addr not in security_module.TLS_IPS:
         # If the current request is not a handshake, TLS is enforced, and the issuer has not still sent a handshake, deny the response
-        send_denied_response(request, NATPMP_RESULT_TLS_ONLY)
         printlog("Rejecting request from %s: plain-text request while TLS is enforced." % ip_addr)
+        send_denied_response(request, NATPMP_RESULT_TLS_ONLY)
         return False
 
     return True
@@ -395,7 +400,10 @@ def check_client_authorization(request, handshake=False):
 
 # Returns a "denied" mapping response
 def send_denied_response(request, rescode):
-    response = NATPMPMappingResponse(request.version, request.opcode + 128, rescode, request.internal_port, 0, 0)
+    if request.opcode == NATPMP_OPCODE_INFO:
+        response = NATPMPInfoResponse(request.version, request.opcode + 128, rescode, ['0.0.0.0'])
+    else:
+        response = NATPMPMappingResponse(request.version, request.opcode + 128, rescode, request.internal_port, 0, 0)
     response.sock = request.sock
     response.address = request.address
     send_response(response)
