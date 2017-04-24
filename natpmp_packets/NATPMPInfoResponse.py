@@ -37,7 +37,7 @@ def from_bytes(byte_data):
             except IOError:
                 raise MalformedPacketException("Server didn't return a valid IP address")
 
-                addresses.append(ip_str)
+            addresses.append(ip_str)
 
     res = NATPMPInfoResponse(version, opcode, result, addresses)
     res.epoch = epoch
