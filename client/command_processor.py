@@ -53,10 +53,10 @@ def check_ok_settings(namespace):
 
         try:
             pub_port = int(namespace.req[1])
-            if not 1 <= pub_port <= 65535:
+            if not 0 <= pub_port <= 65535:
                 raise ValueError
         except ValueError:
-            sys.exit("The private port must be an integer between 1 and 65535.")
+            sys.exit("The public port must be an integer between 0 and 65535.")
 
         if namespace.req[2].upper() not in ['TCP', 'UDP']:
             sys.exit("The protocol for the mapping must be either TCP or UDP")
