@@ -203,7 +203,8 @@ def operation_do_mapping(request):
         else:
             # There are mappings on some/all interfaces, check that all of the requested mappings can be updated
             # That is, there are already as many mappings as requested, and all of them are bound to the same external port
-            all_updatable = len(client_mappings) == len(public_ips) and len(set(m['public_port'] for m in client_mappings)) == 1
+            # all_updatable = len(client_mappings) == len(public_ips) and len(set(m['public_port'] for m in client_mappings)) == 1
+            all_updatable = len(set(m['public_port'] for m in client_mappings)) == 1
 
             if all_updatable:
                 pub_port = client_mappings[0]['public_port']
