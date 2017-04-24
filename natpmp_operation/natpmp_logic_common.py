@@ -119,7 +119,6 @@ def operation_get_info(request):
 
 # Tries to perform a port mapping operation
 def operation_do_mapping(request):
-    #TODO si todos existen y tienen el mismo puerto publico y privado, hacerlo para multi-ip
     if not check_client_authorization(request):
         return
 

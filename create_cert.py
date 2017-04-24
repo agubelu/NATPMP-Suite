@@ -19,7 +19,7 @@ import os
 
 
 # TODO añadir posibilidad de configurar la longitud de la clave
-def create_cert(ip, seconds, der):
+def create_cert(ip, seconds, der, key_size):
     security_module.initialize_root_certificate()
 
     client_cert_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "certs/%s.crt" % ip)
@@ -40,7 +40,7 @@ def create_cert(ip, seconds, der):
     # Create the private key
     private_key = rsa.generate_private_key(
         public_exponent=65537,
-        key_size=2048,
+        key_size=key_size,
         backend=default_backend()
     )
 
@@ -100,10 +100,11 @@ if __name__ == "__main__":
 
     if not args or '-h' in args or '--help' in args:
         print("""
-Usage: create-cert.py client_ip lifetime [-der]
+Usage: create-cert.py client_ip lifetime [key_size] [-der]
 
     client_ip: The IPv4 address that will be used as the 'subject' for the certificate.
     lifetime: Lifetime for the certificate in seconds, starting when it's created.
+    key_size: Optional, size in bits for the RSA key. Can be 1024, 2048 or 4096. Defaults to 2048.
 
     If -der is provided, will generate a certificate in the DER binary format, instead of the regular PEM.
 """)
@@ -114,6 +115,14 @@ Usage: create-cert.py client_ip lifetime [-der]
 
     client_ip = args[0]
     lifetime = args[1]
+
+    if len(args) >= 3 and args[2] != "-der":
+        keylen = args[2]
+        if keylen not in ['1024', '2048', '4096']:
+            sys.exit("The key length is not a valid size.")
+        keylen = int(keylen)
+    else:
+        keylen = 2048
 
     # Check that the IP is OK
     if not is_valid_ip_string(client_ip):
@@ -128,4 +137,4 @@ Usage: create-cert.py client_ip lifetime [-der]
         sys.exit("The lifetime must be a positive integer.")
 
     # Everything is fine, create the cert
-    create_cert(client_ip, lifetime_int, '-der' in args)
+    create_cert(client_ip, lifetime_int, '-der' in args, keylen)
