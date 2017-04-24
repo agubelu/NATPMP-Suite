@@ -143,10 +143,7 @@ def get_cert_from_bytes(byte_data):
             root_cert_public_key.verify(
                 cert_signature,
                 cert_payload_bytes,
-                padding.PSS(
-                    mgf=padding.MGF1(cert_hashing_algo),
-                    salt_length=padding.PSS.MAX_LENGTH
-                ),
+                padding.PKCS1v15(),
                 cert_hashing_algo
             )
         except InvalidSignature:
@@ -196,10 +193,7 @@ def sign_and_cipher_data_with_nonce(byte_data, public_key, private_key, nonce):
     # Sign the data with the nonce
     signature = private_key.sign(
         data_to_sign,
-        padding.PSS(
-            mgf=padding.MGF1(hashes.SHA256()),
-            salt_length=padding.PSS.MAX_LENGTH,
-        ),
+        padding.PKCS1v15(),
         hashes.SHA256()
     )
 
@@ -225,11 +219,7 @@ def sign_and_cipher_data_with_nonce(byte_data, public_key, private_key, nonce):
     # Cipher the AES key with RSA
     ciphered_key = public_key.encrypt(
         aes_key,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
+        padding.PKCS1v15(),
     )
 
     # Send the AES IV, the ciphered key and the ciphered data
@@ -260,11 +250,7 @@ def decipher_and_check_signature_and_nonce(ciphered, private_key, public_key, no
     # Decipher the AES key
     aes_key = private_key.decrypt(
         ciphered_aes_key,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
+        padding.PKCS1v15(),
     )
 
     # Decipher the data
@@ -287,10 +273,7 @@ def decipher_and_check_signature_and_nonce(ciphered, private_key, public_key, no
         public_key.verify(
             signature,
             sent_nonce + request,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH,
-            ),
+            padding.PKCS1v15(),
             hashes.SHA256()
         )
     except InvalidSignature:
