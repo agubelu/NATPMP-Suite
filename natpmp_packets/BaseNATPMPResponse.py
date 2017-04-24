@@ -1,6 +1,21 @@
-from natpmp_packets.BaseNATPMPPacket import BaseNATPMPPacket
+from natpmp_packets.BaseNATPMPPacket        import BaseNATPMPPacket
+from natpmp_operation.server_exceptions     import MalformedPacketException
 
 import time
+
+
+def from_bytes(byte_data):
+    if len(byte_data) != 8:
+        raise MalformedPacketException("The byte data does not represent a valid response")
+
+    version = byte_data[0]
+    opcode = byte_data[1]
+    result = int.from_bytes(byte_data[2:4], 'big')
+    epoch = int.from_bytes(byte_data[4:8], 'big')
+
+    res = BaseNATPMPResponse(version, opcode, result)
+    res.epoch = epoch
+    return res
 
 
 class BaseNATPMPResponse(BaseNATPMPPacket):
