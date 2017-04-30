@@ -41,7 +41,8 @@ OPERATIONS_DESC = {
 if __name__ == "__main__":
 
     if "gui" in sys.argv or len(sys.argv) == 1:
-        pass  # TODO launch the client GUI
+        from client.gui.init_gui import init_gui
+        init_gui()
     else:
         # Get the namespace from the command line
         namespace = process_command_line_params()
