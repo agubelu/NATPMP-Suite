@@ -301,6 +301,10 @@ class MainFrame(Frame):
         self.button_cert.configure(command=lambda: select_file_handler("cert"))
         self.button_key.configure(command=lambda: select_file_handler("key"))
 
+        # Finally, the handler for the Send button
+        from client.gui.client_logic import process_request
+        self.button_send.configure(command=lambda: process_request(self))
+
 
 ############################################################################################
 ############################################################################################
@@ -313,7 +317,7 @@ class MainFrame(Frame):
 
     def insert_info_line(self, text):
         self.info_text.configure(state=NORMAL)
-        self.info_text.insert(END, text)
+        self.info_text.insert(END, text + "\n")
         self.info_text.see(END)
         self.info_text.configure(state=DISABLED)
 
