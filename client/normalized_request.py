@@ -27,7 +27,7 @@ def from_namespace(namespace):
         lifetime = int(namespace.l)
         public_ips = namespace.ips
 
-    use_tls = True if namespace.tls else False  # Note that just doing use_tls = namespace.tls might result in setting a None value
+    use_tls = bool(namespace.tls)
     tls_cert = namespace.tls[0] if namespace.tls else None
     tls_key = namespace.tls[1] if namespace.tls else None
     router = namespace.g

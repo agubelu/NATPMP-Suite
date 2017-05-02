@@ -302,7 +302,7 @@ class MainFrame(Frame):
         self.button_key.configure(command=lambda: select_file_handler("key"))
 
         # Finally, the handler for the Send button
-        from client.gui.client_logic import process_request
+        from client.gui.request_processor import process_request
         self.button_send.configure(command=lambda: process_request(self))
 
 
