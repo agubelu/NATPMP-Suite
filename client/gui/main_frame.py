@@ -88,7 +88,7 @@ class MainFrame(Frame):
         frame_pubport = Frame(frame_left)
         frame_pubport.pack(fill=X)
 
-        self.label_pubport = Label(frame_pubport, text="Private port:", width=LABEL_WIDTH, anchor=E)
+        self.label_pubport = Label(frame_pubport, text="Public port:", width=LABEL_WIDTH, anchor=E)
         self.label_pubport.pack(side=LEFT, padx=PADDING_AMOUNT, pady=PADDING_AMOUNT)
 
         var_public_port = StringVar()
@@ -238,8 +238,6 @@ class MainFrame(Frame):
                 self.button_key.configure(state='disabled')
             else:
                 self.check_usetls.configure(state="normal")
-                self.button_cert.configure(state='normal')
-                self.button_key.configure(state='normal')
 
             if info:
                 # Disable all entries, no matter the version
@@ -314,12 +312,14 @@ class MainFrame(Frame):
         self.info_text.configure(state=NORMAL)
         self.info_text.delete(1.0, END)
         self.info_text.configure(state=DISABLED)
+        self.parent.update_idletasks()
 
     def insert_info_line(self, text):
         self.info_text.configure(state=NORMAL)
         self.info_text.insert(END, text + "\n")
         self.info_text.see(END)
         self.info_text.configure(state=DISABLED)
+        self.parent.update_idletasks()
 
 ############################################################################################
 ############################################################################################

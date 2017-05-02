@@ -1,6 +1,14 @@
 from natpmp_operation.common_utils      import is_valid_ip_string
-from natpmp_operation.security_module   import load_certificate, load_private_key
-from client.network_utils               import get_default_router_address
+from natpmp_operation.security_module   import load_certificate, load_private_key, sign_and_cipher_data_with_nonce, decipher_and_check_signature_and_nonce
+from natpmp_packets.NATPMPCertHandshake import NATPMPCertHandshake
+from natpmp_client                      import OPERATIONS_DESC, RESCODES_MSGS, NATPMP_RESULT_OK, NATPMP_OPCODE_INFO, NATPMP_OPCODE_MAPTCP, NATPMP_OPCODE_MAPUDP
+from client.network_utils               import get_default_router_address, send_request_get_response
+from client                             import normalized_request
+
+from cryptography.hazmat.backends       import default_backend
+from cryptography                       import x509
+
+from datetime                           import datetime, timedelta
 
 from tkinter                            import simpledialog
 
@@ -47,6 +55,113 @@ def process_request(frame):
             frame.insert_info_line("Please, fix the errors and try again.")
             return
 
+    # Everything is 'kay, create the normalized request and send it
+    req = normalized_request.from_dict(ok_data)
+
+    if usetls:
+        req.cert_object = cert_obj
+        req.key_object = key_obj
+
+    send_request(req, frame)
+
+    if "tls_cert" in ok_data:
+        ok_data["tls_cert"].close()
+
+    if "tls_key" in ok_data:
+        ok_data["tls_key"].close()
+
+
+def send_request(request, frame):
+    # If the request uses TLS, send the handshake first
+    if request.use_tls:
+        frame.insert_info_line("Handshaking with %s for a secure request..." % request.router_addr)
+
+        handshake_req = NATPMPCertHandshake(request.version, 3, 0, bytearray(8), request.tls_cert.read())
+
+        try:
+            handshake_response_bytes = send_request_get_response(request.router_addr, handshake_req, frame=frame)
+        except ConnectionRefusedError:
+            frame.insert_info_line("The router is not accepting NAT-PMP requests")
+            return
+
+        if handshake_response_bytes is None:
+            frame.insert_info_line("The router did not reply.")
+            return
+
+        # Convert the received data to a response
+        handshake_response = normalized_request.server_bytes_to_object(handshake_response_bytes)
+
+        # Check that the handshake has been accepted
+        hand_result = int.from_bytes(handshake_response_bytes[2:4], 'big')
+        if hand_result != NATPMP_RESULT_OK:
+            frame.insert_info_line("The handshake operation failed: %s" % RESCODES_MSGS[hand_result])
+            return
+
+        # Handshake OK
+        server_cert_bytes = handshake_response.cert_bytes
+        nonce = handshake_response.nonce
+
+        # Load the server's cert
+        try:
+            server_cert = x509.load_pem_x509_certificate(server_cert_bytes, default_backend())
+        except ValueError:
+            try:
+                server_cert = x509.load_der_x509_certificate(server_cert_bytes, default_backend())
+            except ValueError:
+                frame.insert_info_line("Handshake was OK but the server's certificate could not be loaded.")
+                return
+
+        frame.insert_info_line("Handshake OK, nonce: 0x" + nonce.hex().upper())
+
+    # Load the request into an object
+    request_obj = request.to_request_object()
+    request_bytes = request_obj.to_bytes()
+
+    if request.use_tls:
+        request_bytes = sign_and_cipher_data_with_nonce(request_bytes, server_cert.public_key(), request.key_object, nonce)
+
+    frame.insert_info_line("Sending %sNAT-PMP request to the router..." % ("secure " if request.use_tls else ""))
+
+    try:
+        response_data = send_request_get_response(request.router_addr, request_bytes, True, frame=frame)
+    except ConnectionRefusedError:
+        frame.insert_info_line("The server is not accepting NAT-PMP requests.")
+        return
+
+    if response_data is None:
+        frame.insert_info_line("The server did not reply.")
+        return
+
+    # If it's a secure packet, decipher and check signature
+    if request.use_tls:
+        response_data = decipher_and_check_signature_and_nonce(response_data, request.key_object, server_cert.public_key(), nonce)
+
+    rescode = int.from_bytes(response_data[2:4], 'big')
+
+    if rescode != NATPMP_RESULT_OK:
+        frame.insert_info_line("The server refused the operation: %s" % RESCODES_MSGS[rescode])
+        return
+
+    response_object = normalized_request.server_bytes_to_object(response_data)
+    original_opcode = response_object.opcode - 128
+
+    frame.insert_info_line("------------------------\nResponse data:")
+    frame.insert_info_line("NAT-PMP version: %d" % response_object.version)
+    frame.insert_info_line("Operation: %d (%s)" % (original_opcode, OPERATIONS_DESC[original_opcode]))
+    frame.insert_info_line("Seconds since last start: %d" % response_object.epoch)
+
+    if original_opcode == NATPMP_OPCODE_INFO:
+        frame.insert_info_line("External IPv4 addresses: " + str(response_object.addresses).strip("[]"))
+    elif original_opcode in [NATPMP_OPCODE_MAPUDP, NATPMP_OPCODE_MAPTCP]:
+        frame.insert_info_line("Internal port: %d" % response_object.internal_port)
+        frame.insert_info_line("External port: %d" % response_object.external_port)
+        frame.insert_info_line("Lifetime (seconds): %d (expires at %s)" %
+                               (response_object.lifetime, (datetime.now() - timedelta(seconds=response_object.lifetime)).strftime("%Y-%m-%d %H:%M:%S")))
+
+
+##########################################################################################################
+##########################################################################################################
+##########################################################################################################
 
 def get_errors(version, opcode, priv_port, pub_port, lifetime, ips, gateway, usetls, cert_path, key_path):
     errors = []
@@ -103,14 +218,12 @@ def get_errors(version, opcode, priv_port, pub_port, lifetime, ips, gateway, use
 
     if usetls:
         try:
-            with open(cert_path, "rb") as f:
-                ok_data['tls_cert'] = f
+            ok_data['tls_cert'] = open(cert_path, "rb")
         except IOError:
             errors.append("Cannot read the certificate file.")
 
         try:
-            with open(key_path, "rb") as f:
-                ok_data['tls_key'] = f
+            ok_data['tls_key'] = open(key_path, "rb")
         except IOError:
             errors.append("Cannot read the key file.")
 

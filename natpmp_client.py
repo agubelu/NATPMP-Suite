@@ -63,7 +63,7 @@ if __name__ == "__main__":
                 sys.exit("The router is not accepting NAT-PMP requests")
 
             if data is None:
-                sys.exit("The server did not reply.")
+                sys.exit("The router did not reply.")
 
             # Convert the received data to a response
             handshake_response = normalized_request.server_bytes_to_object(data)

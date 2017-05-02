@@ -35,6 +35,31 @@ def from_namespace(namespace):
     return CommonClientRequest(version, opcode, priv_port, pub_port, lifetime, public_ips, use_tls, tls_cert, tls_key, router)
 
 
+# Return a CommonClientRequest from a dict processed from the graphical interface
+def from_dict(data):
+    # We assume here that the stuff in the dict is already checked and correct!
+    version = data['version']
+    opcode = data['opcode']
+    use_tls = data['usetls']
+    router = data['gateway']
+
+    if opcode == 0:
+        priv_port = None
+        pub_port = None
+        lifetime = None
+        public_ips = None
+    else:
+        priv_port = data['private_port']
+        pub_port = data['public_port']
+        lifetime = data['lifetime']
+        public_ips = data['ips'] if version == 1 else None
+
+    tls_cert = data['tls_cert'] if use_tls else None
+    tls_key = data['tls_key'] if use_tls else None
+
+    return CommonClientRequest(version, opcode, priv_port, pub_port, lifetime, public_ips, use_tls, tls_cert, tls_key, router)
+
+
 # Returns the adequate Response object for the bytes received by the server
 def server_bytes_to_object(byte_data):
     if len(byte_data) < 4:
