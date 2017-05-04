@@ -2,8 +2,8 @@ import argparse
 import sys
 
 import settings
-from natpmp_operation.common_utils import is_valid_ip_string, printerr, check_ip_address_type
-
+from natpmp_operation.common_utils                  import is_valid_ip_string, printerr, check_ip_address_type
+from natpmp_operation.network_management_module     import get_interface_name
 
 def process_command_line_params():
     # Get the parameters and their values from the command line
@@ -134,6 +134,8 @@ def assert_settings_ok():
     # Check that the public interfaces are public IP addresses, raise a warning otherwise
     for ip in settings.PUBLIC_INTERFACES:
         try:
+            if not get_interface_name(ip):
+                sys.exit("Error: Public IP address '%s' could not be found in any interface." % ip)
             if not check_ip_address_type(ip, "PUBLIC"):
                 printerr("Warning: IP address '%s' from the public interfaces is not a public IP address. Proceed with caution." % ip)
         except ValueError:

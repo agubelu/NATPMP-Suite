@@ -1,18 +1,19 @@
-from datetime                               import datetime
+from datetime                                   import datetime
 
-from apscheduler.schedulers.background      import BackgroundScheduler
-from apscheduler.triggers.date              import DateTrigger
-from dateutil.tz                            import tzlocal
-from natpmp_operation.network_module        import send_response
-from natpmp_operation.server_exceptions     import MalformedPacketException, InvalidCertificateException
-from natpmp_operation                       import security_module
-from cryptography.hazmat.primitives         import serialization
+from apscheduler.schedulers.background          import BackgroundScheduler
+from apscheduler.triggers.date                  import DateTrigger
+from dateutil.tz                                import tzlocal
+from natpmp_operation.network_module            import send_response
+from natpmp_operation.server_exceptions         import MalformedPacketException, InvalidCertificateException
+from natpmp_operation                           import security_module
+from cryptography.hazmat.primitives             import serialization
 
-from natpmp_operation.common_utils          import printlog, get_future_date
-from natpmp_packets                         import NATPMPRequest, NATPMPCertHandshake
-from natpmp_packets.BaseNATPMPResponse      import BaseNATPMPResponse
-from natpmp_packets.NATPMPInfoResponse      import NATPMPInfoResponse
-from natpmp_packets.NATPMPMappingResponse   import NATPMPMappingResponse
+from natpmp_operation.common_utils              import printlog, get_future_date
+from natpmp_packets                             import NATPMPRequest, NATPMPCertHandshake
+from natpmp_packets.BaseNATPMPResponse          import BaseNATPMPResponse
+from natpmp_packets.NATPMPInfoResponse          import NATPMPInfoResponse
+from natpmp_packets.NATPMPMappingResponse       import NATPMPMappingResponse
+from natpmp_operation.network_management_module import add_mapping
 
 import settings
 import os
@@ -430,7 +431,8 @@ def send_denied_handshake_response(request, rescode):
 
 # Creates a new mapping in the system
 def create_mapping(ip, port, proto, client, internal_port, lifetime):
-    # TODO actually create the mapping in nftables
+    # TODO handlear este posible ValueError
+    add_mapping(ip, client, port, internal_port, proto.lower())
 
     expiration_date = get_future_date(lifetime)
 
