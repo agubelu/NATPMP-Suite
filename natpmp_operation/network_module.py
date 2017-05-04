@@ -120,4 +120,5 @@ def send_multicast_info():
 
     # Create a new thread to send the info
     t = Thread(target=work_send_multicast)
+    t.daemon = True
     t.start()
