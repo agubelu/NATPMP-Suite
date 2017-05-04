@@ -156,7 +156,7 @@ def send_request(request, frame):
         frame.insert_info_line("Internal port: %d" % response_object.internal_port)
         frame.insert_info_line("External port: %d" % response_object.external_port)
         frame.insert_info_line("Lifetime (seconds): %d (expires at %s)" %
-                               (response_object.lifetime, (datetime.now() - timedelta(seconds=response_object.lifetime)).strftime("%Y-%m-%d %H:%M:%S")))
+                               (response_object.lifetime, (datetime.now() + timedelta(seconds=response_object.lifetime)).strftime("%Y-%m-%d %H:%M:%S")))
 
 
 ##########################################################################################################

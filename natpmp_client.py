@@ -127,4 +127,4 @@ if __name__ == "__main__":
         elif original_opcode in [NATPMP_OPCODE_MAPUDP, NATPMP_OPCODE_MAPTCP]:
             print("Internal port: %d" % response_object.internal_port)
             print("External port: %d" % response_object.external_port)
-            print("Lifetime (seconds): %d (expires at %s)" % (response_object.lifetime, (datetime.now() - timedelta(seconds=response_object.lifetime)).strftime("%Y-%m-%d %H:%M:%S")))
+            print("Lifetime (seconds): %d (expires at %s)" % (response_object.lifetime, (datetime.now() + timedelta(seconds=response_object.lifetime)).strftime("%Y-%m-%d %H:%M:%S")))
