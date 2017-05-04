@@ -75,6 +75,9 @@ def get_params_namespace():
     parser.add_argument('--whitelisted-addresses', '-wl', nargs='+', help="Addresses to accept requests from.",
                         metavar="ip_address")
 
+    parser.add_argument('-debug', action='store_true',
+                        help="Print the current state of all mappings after every request.")
+
     return parser.parse_args()
 
 
@@ -101,6 +104,7 @@ def push_namespace_to_settings(namespace):
     settings.BLACKLISTED_IPS = namespace.blacklisted_addresses
     settings.WHITELIST_MODE = namespace.whitelist
     settings.WHITELISTED_IPS = namespace.whitelisted_addresses
+    settings.DEBUG = namespace.debug
 
 
 def assert_settings_ok():

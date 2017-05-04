@@ -452,7 +452,8 @@ def create_mapping(ip, port, proto, client, internal_port, lifetime):
         CURRENT_MAPPINGS[ip][port][proto] = {'job': job, 'client': client, 'internal_port': internal_port}
         printlog("Creating %s mapping for %s:%d -> %s:%d, expiration time is %s" % (proto, ip, port, client, internal_port, expiration_date.strftime("%Y-%m-%d %H:%M:%S")))
 
-    pprint.pprint(CURRENT_MAPPINGS)
+    if settings.DEBUG:
+        pprint.pprint(CURRENT_MAPPINGS)
 
 
 # Removes a mapping from the system
@@ -465,4 +466,6 @@ def remove_mapping(ip, port, proto, reason):
         del CURRENT_MAPPINGS[ip][port]  # If there are no more mappings for that port, remove it from the dict as well
 
     printlog("Removing mapping for %s:%d %s (%s)" % (ip, port, proto, reason))
-    pprint.pprint(CURRENT_MAPPINGS)
+
+    if settings.DEBUG:
+        pprint.pprint(CURRENT_MAPPINGS)

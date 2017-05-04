@@ -34,3 +34,5 @@ WHITELISTED_IPS = [
     "10.14.33.12",
     "192.168.55.123",
 ]
+
+DEBUG = False  # If set to True, will print the current state of all mappings after every request.
