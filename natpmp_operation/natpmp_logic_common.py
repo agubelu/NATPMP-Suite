@@ -8,7 +8,7 @@ from natpmp_operation.server_exceptions         import MalformedPacketException,
 from natpmp_operation                           import security_module
 from cryptography.hazmat.primitives             import serialization
 
-from natpmp_operation.common_utils              import printlog, get_future_date
+from natpmp_operation.common_utils              import printlog, get_future_date, printerr
 from natpmp_packets                             import NATPMPRequest, NATPMPCertHandshake
 from natpmp_packets.BaseNATPMPResponse          import BaseNATPMPResponse
 from natpmp_packets.NATPMPInfoResponse          import NATPMPInfoResponse
@@ -158,8 +158,12 @@ def operation_do_mapping(request):
 
             # At this point, the client can map into the requested port
             life = get_acceptable_lifetime(request.requested_lifetime)
-            create_mapping(pub_ip, ext_port, request_proto, client_ip, request.internal_port, life)
-            send_ok_response(request, request.internal_port, ext_port, life)
+
+            try:
+                create_mapping(pub_ip, ext_port, request_proto, client_ip, request.internal_port, life)
+                send_ok_response(request, request.internal_port, ext_port, life)
+            except ValueError:
+                send_denied_response(request, NATPMP_RESULT_NETWORK_ERROR)
 
         else:
             # Handling a request for a single mapping that is already mapped for the client's private port
@@ -168,8 +172,11 @@ def operation_do_mapping(request):
             # If the public port matches, then renovate the current mapping
             if existing_mapping['public_port'] == request.external_port:
                 life = get_acceptable_lifetime(request.requested_lifetime)
-                create_mapping(pub_ip, request.external_port, request_proto, client_ip, request.internal_port, life)
-                send_ok_response(request, request.internal_port, existing_mapping['public_port'], life)
+                try:
+                    create_mapping(pub_ip, request.external_port, request_proto, client_ip, request.internal_port, life)
+                    send_ok_response(request, request.internal_port, existing_mapping['public_port'], life)
+                except ValueError:
+                    send_denied_response(request, NATPMP_RESULT_NETWORK_ERROR)
             # Else, send the current mapping as an OK response per protocol specification
             else:
                 time_dif = (existing_mapping['job'].next_run_time - datetime.now(tzlocal())).total_seconds()
@@ -196,9 +203,17 @@ def operation_do_mapping(request):
 
             # At this point, the client can map into the requested port
             life = get_acceptable_lifetime(request.requested_lifetime)
-            for ip in public_ips:
-                create_mapping(ip, ext_port, request_proto, client_ip, request.internal_port, life)
-            send_ok_response(request, request.internal_port, ext_port, life)
+            created_ips = []
+
+            try:
+                for ip in public_ips:
+                    create_mapping(ip, ext_port, request_proto, client_ip, request.internal_port, life)
+                    created_ips.append(ip)
+                send_ok_response(request, request.internal_port, ext_port, life)
+            except ValueError:
+                for ip in created_ips:
+                    remove_mapping(ip, ext_port, request_proto, "removing created mappings after error.")
+                send_denied_response(request, NATPMP_RESULT_MULTIASSIGN_FAILED)
 
         else:
             # There are mappings on some/all interfaces, check that all of the requested mappings can be updated
@@ -209,10 +224,16 @@ def operation_do_mapping(request):
             if all_updatable:
                 pub_port = client_mappings[0]['public_port']
                 life = get_acceptable_lifetime(request.requested_lifetime)
+                created_ips = []
 
-                for ip in public_ips:
-                    create_mapping(ip, pub_port, request_proto, client_ip, request.internal_port, life)
-                send_ok_response(request, request.internal_port, pub_port, life)
+                try:
+                    for ip in public_ips:
+                        create_mapping(ip, pub_port, request_proto, client_ip, request.internal_port, life)
+                    send_ok_response(request, request.internal_port, pub_port, life)
+                except ValueError:
+                    for ip in created_ips:
+                        remove_mapping(ip, pub_port, request_proto, "removing created mappings after error.")
+                    send_denied_response(request, NATPMP_RESULT_MULTIASSIGN_FAILED)
 
             else:
                 send_denied_response(request, NATPMP_RESULT_MULTIASSIGN_FAILED)
@@ -238,15 +259,28 @@ def operation_remove_mappings(request):
 
     mappings = get_mappings_client(public_ips, private_port_range, [request_proto], client_ip)
 
-    # Note that there is no way for a client to remove mappings from another client, since they are searched from
-    # the IP address that sent the request. Also, per protocol specification, requests to delete non-existent mappings
-    # also returns an OK result code.
+    # Remove as many mappings as possible, return OK if they could all be deleted.
+
+    deletions_ok = []
 
     for mapping in mappings:
-        mapping['job'].remove()
-        remove_mapping(mapping['ip'], mapping['public_port'], mapping['proto'], 'client request')
 
-    send_ok_response(request, internal_port, 0, 0)
+        try:
+            remove_mapping(mapping['ip'], mapping['public_port'], mapping['proto'], 'client request')
+            mapping['job'].remove()
+            deletions_ok.append(True)
+        except ValueError:
+            deletions_ok.append(False)
+
+    if all(deletions_ok):
+        send_ok_response(request, internal_port, 0, 0)
+    else:
+        # Send a denied response
+        resp = NATPMPRequest.NATPMPRequest(request.version, request.opcode + 128, NATPMP_RESULT_NETWORK_ERROR, request.internal_port, request.external_port,
+                                           0, request.ipv4_addresses if request.version == 1 else None)
+        resp.sock = request.sock
+        resp.address = request.address
+        send_response(resp)
 
 
 def operation_exchange_certs(request):
@@ -431,8 +465,11 @@ def send_denied_handshake_response(request, rescode):
 
 # Creates a new mapping in the system
 def create_mapping(ip, port, proto, client, internal_port, lifetime):
-    # TODO handlear este posible ValueError
-    network_management_module.add_mapping(ip, client, port, internal_port, proto.lower())
+    try:
+        network_management_module.add_mapping(ip, client, port, internal_port, proto.lower())
+    except ValueError as exc:
+        printerr("Error creating mapping %s:%d -> %s:%d %s - %s" % (ip, port, client, internal_port, proto, str(exc)))
+        raise exc
 
     expiration_date = get_future_date(lifetime)
 
@@ -460,8 +497,14 @@ def create_mapping(ip, port, proto, client, internal_port, lifetime):
 
 # Removes a mapping from the system
 def remove_mapping(ip, port, proto, reason):
-    # TODO handlear este posible ValueError
-    network_management_module.remove_mapping(ip, port, proto.lower())
+    try:
+        network_management_module.remove_mapping(ip, port, proto.lower())
+    except ValueError as exc:
+        printerr("Error deleting mapping with reason '%s': %s" % (reason, str(exc)))
+
+        if reason != "lifetime terminated":
+            # If it's not auto, raise it again so it can be handled at a packet-handling level
+            raise exc
 
     del CURRENT_MAPPINGS[ip][port][proto]  # Remove the dict entry for this public IP, port and protocol
 
