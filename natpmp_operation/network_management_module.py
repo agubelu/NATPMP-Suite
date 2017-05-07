@@ -41,7 +41,7 @@ def remove_mapping(public_ip, public_port, proto):
     iface_name = get_interface_name(public_ip)
 
     # Get the handle for the rule
-    list_command = "nft list table %s -a" % NATPMP_TABLE_NAME
+    list_command = "nft list table %s -a -nnn" % NATPMP_TABLE_NAME
 
     try:
         list_output = check_output(list_command.split())

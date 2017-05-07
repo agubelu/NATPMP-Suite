@@ -13,7 +13,8 @@ def printlog(string):
 
 # Prints a string to the stderr output with a trailing newline.
 def printerr(string):
-    sys.stderr.write(string + "\n")
+    time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    sys.stderr.write("[%s] %s\n" % (time_str, string))
 
 
 # Returns True if the parameter is a String and represents a valid IPv4 address, False otherwise.
