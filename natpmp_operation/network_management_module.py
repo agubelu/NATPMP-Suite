@@ -1,8 +1,9 @@
-from subprocess                     import call
+from subprocess                     import call, check_output, CalledProcessError
 from natpmp_operation.common_utils  import printlog, is_valid_ip_string
 
 import sys
 import netifaces
+import re
 
 
 NATPMP_TABLE_NAME = "natpmp"
@@ -15,7 +16,7 @@ def init_tables():
     exec_or_die("nft add chain %s prerouting { type nat hook prerouting priority 0 ; }" % NATPMP_TABLE_NAME)
     exec_or_die("nft add chain %s postrouting { type nat hook postrouting priority 100 ; }" % NATPMP_TABLE_NAME)
 
-    printlog("Table 'natpmp' initialized on nftables.")
+    printlog("Table '%s' initialized on nftables." % NATPMP_TABLE_NAME)
 
 
 def create_tables():
@@ -27,23 +28,40 @@ def flush_tables():
 
 
 def add_mapping(public_ip, private_ip, public_port, private_port, proto):
-    if proto not in ["tcp", "udp"]:
-        raise ValueError("Proto '%s' is not valid" % proto)
-
-    if not is_valid_ip_string(public_ip):
-        raise ValueError("Public IP address '%s' is not valid" % public_ip)
-
-    if not is_valid_ip_string(private_ip):
-        raise ValueError("Private IP address '%s' is not valid" % private_ip)
-
+    check_mapping_params(proto, public_ip, private_ip)
     iface_name = get_interface_name(public_ip)
-    if not iface_name:
-        raise ValueError("No interface found for public address " + public_ip)
 
     command = "nft add rule %s prerouting iif %s %s dport %d dnat %s:%d" % (NATPMP_TABLE_NAME, iface_name, proto, public_port, private_ip, private_port)
-
     # We've come so far to die here now
     exec_or_die(command, soft=True)
+
+
+def remove_mapping(public_ip, public_port, proto):
+    check_mapping_params(proto, public_ip)
+    iface_name = get_interface_name(public_ip)
+
+    # Get the handle for the rule
+    list_command = "nft list table %s -a" % NATPMP_TABLE_NAME
+
+    try:
+        list_output = check_output(list_command.split())
+    except CalledProcessError as e:
+        raise ValueError("Command %s returned non-zero error code (%d)" % (list_command, e.returncode))
+
+    regex = "iif %s %s dport %d.*# handle (\d*)" % (iface_name, proto, public_port)
+
+    for list_entry in list_output.splitlines():
+        entry_stripped = list_entry.decode("utf-8").strip()
+        match = re.search(regex, entry_stripped)
+
+        if match:
+            handle = match.group(1)
+            remove_command = "nft delete rule %s prerouting handle %s" % (NATPMP_TABLE_NAME, handle)
+            exec_or_die(remove_command, soft=True)
+            return
+
+    # No rule matched
+    raise ValueError("Mapping removal for %s:%d %s failed: no such mapping" % (public_ip, public_port, proto))
 
 ########################################################################################################################
 
@@ -70,3 +88,21 @@ def get_interface_name(public_address):
                 return iface_name
 
     return False
+
+
+def check_mapping_params(proto=None, public_ip=None, private_ip=None):
+
+    if proto:
+        if proto not in ["tcp", "udp"]:
+            raise ValueError("Proto '%s' is not valid" % proto)
+
+    if public_ip:
+        if not is_valid_ip_string(public_ip):
+            raise ValueError("Public IP address '%s' is not valid" % public_ip)
+
+        if not get_interface_name(public_ip):
+            raise ValueError("No interface found for public address " + public_ip)
+
+    if private_ip:
+        if not is_valid_ip_string(private_ip):
+            raise ValueError("Private IP address '%s' is not valid" % private_ip)

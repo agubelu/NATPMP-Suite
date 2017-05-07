@@ -13,7 +13,7 @@ from natpmp_packets                             import NATPMPRequest, NATPMPCert
 from natpmp_packets.BaseNATPMPResponse          import BaseNATPMPResponse
 from natpmp_packets.NATPMPInfoResponse          import NATPMPInfoResponse
 from natpmp_packets.NATPMPMappingResponse       import NATPMPMappingResponse
-from natpmp_operation.network_management_module import add_mapping
+from natpmp_operation                           import network_management_module
 
 import settings
 import os
@@ -432,7 +432,7 @@ def send_denied_handshake_response(request, rescode):
 # Creates a new mapping in the system
 def create_mapping(ip, port, proto, client, internal_port, lifetime):
     # TODO handlear este posible ValueError
-    add_mapping(ip, client, port, internal_port, proto.lower())
+    network_management_module.add_mapping(ip, client, port, internal_port, proto.lower())
 
     expiration_date = get_future_date(lifetime)
 
@@ -460,7 +460,8 @@ def create_mapping(ip, port, proto, client, internal_port, lifetime):
 
 # Removes a mapping from the system
 def remove_mapping(ip, port, proto, reason):
-    # TODO actually destroy the mapping in nftables
+    # TODO handlear este posible ValueError
+    network_management_module.remove_mapping(ip, port, proto.lower())
 
     del CURRENT_MAPPINGS[ip][port][proto]  # Remove the dict entry for this public IP, port and protocol
 
