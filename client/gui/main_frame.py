@@ -203,7 +203,7 @@ class MainFrame(Frame):
 
         scrollbar = ttk.Scrollbar(frame_text, orient=VERTICAL)
 
-        self.info_text = Text(frame_text, height=10, padx=PADDING_AMOUNT, pady=PADDING_AMOUNT, yscrollcommand=scrollbar.set)
+        self.info_text = Text(frame_text, height=11, padx=PADDING_AMOUNT, pady=PADDING_AMOUNT, yscrollcommand=scrollbar.set)
         self.info_text.insert(END, "Status: idle")
 
         scrollbar.config(command=self.info_text.yview)
@@ -300,6 +300,7 @@ class MainFrame(Frame):
         self.button_key.configure(command=lambda: select_file_handler("key"))
 
         # Finally, the handler for the Send button
+        # TODO hacer que esto se pueda parar por dios
         from client.gui.request_processor import process_request
         self.button_send.configure(command=lambda: process_request(self))
 
