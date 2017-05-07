@@ -18,7 +18,6 @@ import sys
 import os
 
 
-# TODO añadir posibilidad de configurar la longitud de la clave
 def create_cert(ip, seconds, der, key_size):
     security_module.initialize_root_certificate()
 
