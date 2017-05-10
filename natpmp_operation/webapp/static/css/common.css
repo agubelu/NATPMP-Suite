@@ -1,0 +1,13 @@
+body {
+	background: #eee !important;
+	padding: 4%;
+}
+
+.alert {
+    margin: 20px;
+}
+
+div.content {
+	margin-top: 80px;
+    margin-bottom: 80px;
+}

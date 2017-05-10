@@ -1,0 +1,23 @@
+#form-input-pass {
+  background-color: #FFFFFF;
+  border: 1px rgba(0,0,0,0.1) solid;
+  max-width: 400px;
+  padding: 30px 50px 50px 50px;
+  margin: 0 auto;
+  margin-top: 10%;
+ }
+
+#form-header {
+  margin-bottom: 30px;
+}
+
+#submit_button {
+  position: relative;
+  font-size: 18px;
+  height: auto;
+  padding: 12px;
+}
+
+#input_password {
+  margin-bottom: 20px;
+}

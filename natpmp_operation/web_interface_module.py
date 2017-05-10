@@ -1,5 +1,4 @@
-from flask                          import Flask, session, request, render_template
-
+from flask                          import Flask, session, request, render_template, redirect
 from natpmp_operation.common_utils  import printlog
 
 import settings
@@ -19,7 +18,18 @@ def init_web_interface():
     @flask_app.route("/", methods=["GET", "POST"])
     def hello_world():
         if request.method == "GET":
-            return render_template("index.html", message=None)
+            # GET request, display the password input form if there's a password set
+            if settings.WEB_INTERFACE_PASSWORD:
+                return render_template("index.html", message=None)
+            else:
+                return redirect("/natpmp-dashboard")
+        else:
+            # POST request
+            if "password" in request.form and request.form["password"] == settings.WEB_INTERFACE_PASSWORD:
+                session["allowed"] = True
+                return redirect("/natpmp-dashboard")
+            else:
+                return render_template("index.html", message="The password is not correct.")
 
     # Run the app
     printlog("Web interface up and running at port %s" % interface_port)

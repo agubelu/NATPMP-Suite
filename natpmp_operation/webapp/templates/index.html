@@ -1,8 +1,22 @@
 {% extends "master.html" %}
 {% block title %}Access{% endblock %}
+
+{% block head %}
+    {{ super() }}
+    <link href="/static/css/index.css" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
-  <h1>Index</h1>
-  <p class="important">
-    Welcome on my awesome homepage.
-  </p>
+    <form id="form-input-pass" method="post">
+      <h2 id="form-header">Administrator password:</h2>
+      <input type="password" name="password" class="form-control" placeholder="password" id="input_password" required="yes"/>
+      <button class="btn btn-lg btn-primary btn-block" type="submit" id="submit_button">Send</button>
+    </form>
+
+    {% if message %}
+    <div class="alert alert-danger alert-dismissable">
+      <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+      <strong>Error:</strong> {{ message }}
+    </div>
+    {% endif %}
 {% endblock %}
