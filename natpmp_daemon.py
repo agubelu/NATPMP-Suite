@@ -3,8 +3,9 @@
 import time
 import signal
 import sys
+import threading
 
-from natpmp_operation                           import security_module
+from natpmp_operation                           import security_module, web_interface_module
 from natpmp_operation.network_module            import initialize_network_sockets
 from natpmp_operation.config_module             import process_command_line_params
 from natpmp_operation.network_management_module import init_tables, flush_tables
@@ -32,6 +33,12 @@ if __name__ == "__main__":
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, handle_sigterm)
+
+    # Init the web interface if required
+    if settings.ALLOW_WEB_INTERFACE:
+        flask_thread = threading.Thread(target=web_interface_module.init_web_interface)
+        flask_thread.daemon = True
+        flask_thread.start()
 
     # Start the UDP sockets to listen for requests from the clients in an infinite loop
     try:

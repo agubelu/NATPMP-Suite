@@ -5,6 +5,7 @@ import settings
 from natpmp_operation.common_utils                  import is_valid_ip_string, printerr, check_ip_address_type
 from natpmp_operation.network_management_module     import get_interface_name
 
+
 def process_command_line_params():
     # Get the parameters and their values from the command line
     namespace = get_params_namespace()
@@ -75,6 +76,9 @@ def get_params_namespace():
     parser.add_argument('--whitelisted-addresses', '-wl', nargs='+', help="Addresses to accept requests from.",
                         metavar="ip_address")
 
+    parser.add_argument('-web', nargs=2, help="Enable the administrative web interface. Set the password to an empty string to disable it.",
+                        metavar=("port", "password"))
+
     parser.add_argument('-debug', action='store_true',
                         help="Print the current state of all mappings after every request.")
 
@@ -105,6 +109,13 @@ def push_namespace_to_settings(namespace):
     settings.WHITELIST_MODE = namespace.whitelist
     settings.WHITELISTED_IPS = namespace.whitelisted_addresses
     settings.DEBUG = namespace.debug
+
+    if namespace.web:
+        settings.ALLOW_WEB_INTERFACE = True
+        settings.WEB_INTERFACE_PORT = namespace.web[0]
+        settings.WEB_INTERFACE_PASSWORD = namespace.web[1]
+    else:
+        settings.ALLOW_WEB_INTERFACE = False
 
 
 def assert_settings_ok():
@@ -210,6 +221,17 @@ def assert_settings_ok():
             printerr("Warning: Whitelist mode is activated but the whitelist is empty. This will result in denying all requests from every client.")
         else:
             _check_all_ips_correct(settings.WHITELISTED_IPS, "the whitelist")
+
+    if settings.ALLOW_WEB_INTERFACE:
+        try:
+            port_int = int(settings.WEB_INTERFACE_PORT)
+            if not 1 <= port_int <= 65535:
+                raise ValueError
+        except ValueError:
+            sys.exit("The web port must be an integer between 1 and 65535.")
+
+        if not settings.WEB_INTERFACE_PASSWORD:
+            printerr("Warning: the administrative website is online without a password.")
 
 ########################################################################################################################
 ########################################################################################################################

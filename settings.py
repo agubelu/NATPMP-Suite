@@ -21,7 +21,7 @@ EXCLUDED_PORTS = [80, 443, 8080]
 MIN_ALLOWED_LIFETIME = 60  # Seconds
 MAX_ALLOWED_LIFETIME = 3600  # Seconds
 
-FIXED_LIFETIME = None  # In seconds, set to a value to force all mappings lifetime to this value
+FIXED_LIFETIME = None  # In seconds, set to a value to force all mappings lifetime to this value.
 
 BLACKLIST_MODE = True
 BLACKLISTED_IPS = [
@@ -34,5 +34,9 @@ WHITELISTED_IPS = [
     "10.14.33.12",
     "192.168.55.123",
 ]
+
+ALLOW_WEB_INTERFACE = False
+WEB_INTERFACE_PORT = 8080
+WEB_INTERFACE_PASSWORD = "natpmp"  # Set to an empty sting, False or None to not require password.
 
 DEBUG = False  # If set to True, will print the current state of all mappings after every request.
