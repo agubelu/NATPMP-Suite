@@ -32,7 +32,7 @@ def send_and_receive_with_timeout(sock, dst_ip, data, timeout):
 # until it waits 64 s and then gives up.
 
 # Raises ConnectionRefusedError if the destination port is not available.
-def send_request_get_response(dst_ip, data, raw=False, frame=None):
+def send_request_get_response(dst_ip, data, raw=False, frame=None, max_retries=8):
     # Create the socket
     udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_sock.setblocking(0)
@@ -56,11 +56,11 @@ def send_request_get_response(dst_ip, data, raw=False, frame=None):
         retries += 1
 
         if frame:
-            frame.insert_info_line("Server did not reply, trying again...")
+            frame.insert_info_line("Router did not reply, trying again...")
         else:
-            print("Server did not reply, trying again...")
+            print("Router did not reply, trying again...")
 
-        if retries == 8:
+        if retries == max_retries:
             break
 
     return None

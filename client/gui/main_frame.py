@@ -5,6 +5,13 @@ from tkinter import *
 LABEL_WIDTH = 10
 PADDING_AMOUNT = 5
 
+V0_TEXT = "NAT-PMP v0 (RFC 6886)"
+V1_TEXT = "NAT-PMP v1 (custom)"
+
+OP0_TEXT = "NAT-PMP discovery"
+OP1_TEXT = "UDP mapping"
+OP2_TEXT = "TCP mapping"
+
 
 class MainFrame(Frame):
 
@@ -48,9 +55,9 @@ class MainFrame(Frame):
         self.label_version.pack(side=LEFT, padx=PADDING_AMOUNT, pady=PADDING_AMOUNT)
 
         var_select_version = StringVar()
-        self.select_version = ttk.Combobox(frame_ver, values=("NAT-PMP v0 (official)", "NAT-PMP v1 (custom)"), textvariable=var_select_version)
+        self.select_version = ttk.Combobox(frame_ver, values=(V0_TEXT, V1_TEXT), textvariable=var_select_version)
         self.select_version.var = var_select_version
-        self.select_version.set("NAT-PMP v0 (official)")
+        self.select_version.set(V0_TEXT)
         self.select_version.configure(state='readonly')
         self.select_version.pack(fill=X, padx=PADDING_AMOUNT, expand=True)
 
@@ -63,9 +70,9 @@ class MainFrame(Frame):
         self.label_operation.pack(side=LEFT, padx=PADDING_AMOUNT, pady=PADDING_AMOUNT)
 
         var_select_operation = StringVar()
-        self.select_operation = ttk.Combobox(frame_operation, values=("NAT-PMP discovery", "TCP mapping", "UDP mapping"), textvariable=var_select_operation)
+        self.select_operation = ttk.Combobox(frame_operation, values=(OP0_TEXT, OP1_TEXT, OP2_TEXT), textvariable=var_select_operation)
         self.select_operation.var = var_select_operation
-        self.select_operation.set("NAT-PMP discovery")
+        self.select_operation.set(OP0_TEXT)
         self.select_operation.configure(state='readonly')
         self.select_operation.pack(fill=X, padx=PADDING_AMOUNT, expand=True)
 
@@ -228,8 +235,8 @@ class MainFrame(Frame):
 
         # Handler for the version and operation selectors, enables or disables the corresponding fields
         def version_operation_handler(_):
-            v0 = self.select_version.var.get() == "NAT-PMP v0 (official)"
-            info = self.select_operation.var.get() == "NAT-PMP discovery"
+            v0 = self.select_version.var.get() == V0_TEXT
+            info = self.select_operation.var.get() == OP0_TEXT
 
             if v0:
                 self.check_usetls.var.set(0)
@@ -300,9 +307,14 @@ class MainFrame(Frame):
         self.button_key.configure(command=lambda: select_file_handler("key"))
 
         # Finally, the handler for the Send button
-        # TODO hacer que esto se pueda parar por dios
         from client.gui.request_processor import process_request
-        self.button_send.configure(command=lambda: process_request(self))
+
+        def send_button_handler():
+            self.button_send.configure(state="disabled")
+            process_request(self)
+            self.button_send.configure(state="normal")
+
+        self.button_send.configure(command=send_button_handler)
 
 
 ############################################################################################

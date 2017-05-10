@@ -4,6 +4,7 @@ from natpmp_packets.NATPMPCertHandshake import NATPMPCertHandshake
 from natpmp_client                      import OPERATIONS_DESC, RESCODES_MSGS, NATPMP_RESULT_OK, NATPMP_OPCODE_INFO, NATPMP_OPCODE_MAPTCP, NATPMP_OPCODE_MAPUDP
 from client.network_utils               import get_default_router_address, send_request_get_response
 from client                             import normalized_request
+from client.gui.main_frame              import V0_TEXT, V1_TEXT, OP0_TEXT, OP1_TEXT, OP2_TEXT
 
 from cryptography.hazmat.backends       import default_backend
 from cryptography                       import x509
@@ -17,11 +18,11 @@ def process_request(frame):
     frame.reset_info_text()
 
     # Get the request information
-    version = 0 if frame.select_version.var.get() == "NAT-PMP v0 (official)" else 1
+    version = 0 if frame.select_version.var.get() == V0_TEXT else 1
     opcode = {
-        "NAT-PMP discovery": 0,
-        "UDP mapping": 1,
-        "TCP mapping": 2,
+        OP0_TEXT: 0,
+        OP1_TEXT: 1,
+        OP2_TEXT: 2,
     }[frame.select_operation.var.get()]
 
     priv_port = frame.entry_privport.var.get()
@@ -79,7 +80,7 @@ def send_request(request, frame):
         handshake_req = NATPMPCertHandshake(request.version, 3, 0, bytearray(8), request.tls_cert.read())
 
         try:
-            handshake_response_bytes = send_request_get_response(request.router_addr, handshake_req, frame=frame)
+            handshake_response_bytes = send_request_get_response(request.router_addr, handshake_req, frame=frame, max_retries=5)
         except ConnectionRefusedError:
             frame.insert_info_line("The router is not accepting NAT-PMP requests")
             return
@@ -108,7 +109,7 @@ def send_request(request, frame):
             try:
                 server_cert = x509.load_der_x509_certificate(server_cert_bytes, default_backend())
             except ValueError:
-                frame.insert_info_line("Handshake was OK but the server's certificate could not be loaded.")
+                frame.insert_info_line("Handshake was OK but the router's certificate could not be loaded.")
                 return
 
         frame.insert_info_line("Handshake OK, nonce: 0x" + nonce.hex().upper())
@@ -120,16 +121,16 @@ def send_request(request, frame):
     if request.use_tls:
         request_bytes = sign_and_cipher_data_with_nonce(request_bytes, server_cert.public_key(), request.key_object, nonce)
 
-    frame.insert_info_line("Sending %sNAT-PMP request to the router..." % ("secure " if request.use_tls else ""))
+    frame.insert_info_line("Sending %sNAT-PMP request to %s" % ("secure " if request.use_tls else "", request.router_addr))
 
     try:
-        response_data = send_request_get_response(request.router_addr, request_bytes, True, frame=frame)
+        response_data = send_request_get_response(request.router_addr, request_bytes, True, frame=frame, max_retries=5)
     except ConnectionRefusedError:
-        frame.insert_info_line("The server is not accepting NAT-PMP requests.")
+        frame.insert_info_line("The router is not accepting NAT-PMP requests.")
         return
 
     if response_data is None:
-        frame.insert_info_line("The server did not reply.")
+        frame.insert_info_line("The router did not reply.")
         return
 
     # If it's a secure packet, decipher and check signature
@@ -139,7 +140,7 @@ def send_request(request, frame):
     rescode = int.from_bytes(response_data[2:4], 'big')
 
     if rescode != NATPMP_RESULT_OK:
-        frame.insert_info_line("The server refused the operation: %s" % RESCODES_MSGS[rescode])
+        frame.insert_info_line("The router refused the operation: %s" % RESCODES_MSGS[rescode])
         return
 
     response_object = normalized_request.server_bytes_to_object(response_data)
