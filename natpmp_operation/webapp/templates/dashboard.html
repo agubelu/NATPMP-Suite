@@ -1,0 +1,66 @@
+{% extends "master.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block head %}
+    {{ super() }}
+    <link href="/static/css/dashboard.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+
+    <div class="col-md-10 col-md-offset-1">
+
+        <div class="panel panel-default panel-table">
+          <div class="panel-heading">
+            <div class="row">
+              <div class="col col-xs-6">
+                <h2>Current NAT-PMP mappings</h2>
+              </div>
+              <div class="col col-xs-6 text-right">
+                  <button type="button" id="button-settings" class="btn btn-sm btn-primary btn-create"
+                  onclick="window.location='/edit-settings/'">
+                      Edit settings
+                  </button>
+                  <button type="button" id="button-create" class="btn btn-sm btn-primary btn-create"
+                  onclick="window.location='/create-mapping/'">
+                      Create mapping
+                  </button>
+                </div>
+            </div>
+          </div>
+
+          <div class="panel-body">
+            <table data-toggle="table" class="table table-striped table-bordered table-list" data-sort-name="expiration" data-sort-order="asc">
+              <thead>
+                <tr>
+                    <th data-field="public-ip" data-sortable="true">Public IP</th>
+                    <th data-field="public-port" data-sortable="true">Public port</th>
+                    <th data-field="client" data-sortable="true">Client</th>
+                    <th data-field="private-port" data-sortable="true">Private port</th>
+                    <th data-field="port" data-sortable="true">Protocol</th>
+                    <th data-field="expiration" data-sortable="true">Expires at</th>
+                    <th>Delete</th>
+                </tr>
+              </thead>
+                <tbody>
+                  {% for mapping in mappings %}
+                  <tr>
+                    <td>{{ mapping.ip }}</td>
+                    <td>{{ mapping.public_port }}</td>
+                    <td>{{ mapping.client }}</td>
+                    <td>{{ mapping.internal_port }}</td>
+                    <td>{{ mapping.proto }}</td>
+                    <td>{{ mapping.expiration_date }}</td>
+                    <td><button type="button" class="btn btn-sm btn-primary btn-danger"
+                    onclick="window.location='/delete-mapping?ip={{mapping.ip|urlencode}}&port={{mapping.public_port}}&proto={{mapping.proto}}'">
+                        Delete
+                    </button></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+            </table>
+          </div>
+
+        </div>
+    </div>
+{% endblock %}
