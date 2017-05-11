@@ -8,6 +8,14 @@
 
 {% block content %}
 
+    <script>
+        function askredir(ip, port, proto) {
+            if(confirm("Are you sure you want to delete this mapping?")) {
+                window.location = '/delete-mapping?ip=' + ip + "&port=" + port + "&proto=" + proto;
+            }
+        }
+    </script>
+
     <div class="col-md-10 col-md-offset-1">
 
         <div class="panel panel-default panel-table">
@@ -52,7 +60,7 @@
                     <td>{{ mapping.proto }}</td>
                     <td>{{ mapping.expiration_date }}</td>
                     <td><button type="button" class="btn btn-sm btn-primary btn-danger"
-                    onclick="window.location='/delete-mapping?ip={{mapping.ip|urlencode}}&port={{mapping.public_port}}&proto={{mapping.proto}}'">
+                    onclick="askredir('{{mapping.ip|urlencode}}', {{mapping.public_port}}, '{{mapping.proto}}')">
                         Delete
                     </button></td>
                   </tr>

@@ -46,6 +46,25 @@ def init_web_interface():
 
         return render_template("dashboard.html", mappings=mappings)
 
+    @flask_app.route("/delete-mapping", methods=["GET"])
+    def delete_mapping_handler():
+        # Ensure that the user has introduced the correct pasword
+        if settings.WEB_INTERFACE_PASSWORD and not session.get("allowed", False):
+            return redirect("/")
+
+        ip = request.args.get('ip', None)
+        port = int(request.args.get('port', None))
+        proto = request.args.get('proto', None)
+
+        # If it exists, remove it
+        from natpmp_operation import natpmp_logic_common
+        mappings = natpmp_logic_common.CURRENT_MAPPINGS
+
+        if ip in mappings and port in mappings[ip] and proto in mappings[ip][port]:
+            natpmp_logic_common.remove_mapping(ip, port, proto, "Deleted via web interface")
+
+        return redirect("/dashboard")
+
     # Run the app
     printlog("Web interface up and running at port %s" % interface_port)
     flask_app.run(port=int(interface_port))
