@@ -80,7 +80,7 @@ def get_params_namespace():
                         metavar=("port", "password"))
 
     parser.add_argument('-debug', action='store_true',
-                        help="Print the current state of all mappings after every request.")
+                        help="Print the current state of all mappings after every request and log web interface access.")
 
     return parser.parse_args()
 

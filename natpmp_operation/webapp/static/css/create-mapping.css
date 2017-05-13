@@ -1,0 +1,19 @@
+#form-create-mapping {
+  background-color: #FFFFFF;
+  border: 1px rgba(0,0,0,0.1) solid;
+  max-width: 600px;
+  padding: 30px 50px 50px 50px;
+  margin: 0 auto;
+  margin-top: 10%;
+ }
+
+#form-header {
+  margin-bottom: 30px;
+}
+
+button {
+  position: relative;
+  font-size: 18px;
+  height: auto;
+  padding: 12px;
+}

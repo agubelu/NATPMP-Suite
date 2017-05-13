@@ -1,10 +1,9 @@
 PRIVATE_INTERFACES = [
-    "10.0.0.1",
-    "192.168.0.1",
+    "127.0.0.1",
 ]
 
 PUBLIC_INTERFACES = [
-    "80.102.236.61",
+    "192.168.159.129",
 ]
 
 ALLOW_VERSION_0 = True
@@ -23,7 +22,7 @@ MAX_ALLOWED_LIFETIME = 3600  # Seconds
 
 FIXED_LIFETIME = None  # In seconds, set to a value to force all mappings lifetime to this value.
 
-BLACKLIST_MODE = True
+BLACKLIST_MODE = False
 BLACKLISTED_IPS = [
     "10.0.13.37",
     "192.168.10.12",
@@ -35,8 +34,8 @@ WHITELISTED_IPS = [
     "192.168.55.123",
 ]
 
-ALLOW_WEB_INTERFACE = False
-WEB_INTERFACE_PORT = 8080
-WEB_INTERFACE_PASSWORD = "natpmp"  # Set to an empty sting, False or None to not require password.
+ALLOW_WEB_INTERFACE = True
+WEB_INTERFACE_PORT = 80
+WEB_INTERFACE_PASSWORD = ""  # Set to an empty string, False or None to not require password.
 
 DEBUG = False  # If set to True, will print the current state of all mappings after every request.

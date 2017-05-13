@@ -1,0 +1,99 @@
+{% extends "master.html" %}
+{% block title %}Mapping creation{% endblock %}
+
+{% block head %}
+    {{ super() }}
+    <link href="/static/css/create-mapping.css" rel="stylesheet">
+    <script src="/static/js/validator.min.js"></script>
+
+    <script>
+    $(function() {
+        $("#form-create-mapping").validator({
+            custom: {
+                'ipv4addr': function($el) {
+                    var spl = $el.val().split(".");
+                    if(spl.length != 4) return "Must be a valid IPv4 address.";
+
+                    for(var i = 0; i < 4; i++) {
+                        var d = spl[i];
+                        if(!/\d{1,3}/.test(d) || d > 255) return "Must be a valid IPv4 address.";
+                    }
+                }
+            }
+        });
+    });
+    </script>
+{% endblock %}
+
+{% block content %}
+
+<form id="form-create-mapping" method="post" class="form-horizontal" data-toggle="validator">
+  <h2 id="form-header">NAT mapping creation</h2>
+
+    {% if message %}
+        <div class="alert alert-danger alert-dismissable">
+          <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+          <strong>Error:</strong> {{ message }}
+        </div>
+    {% endif %}
+
+    <div class="form-group required">
+        <label for="id-select-public-ip" class="control-label col-md-3 requiredField">Public IP:</label>
+        <div class="controls col-md-8">
+            <select class="form-control" id="id-select-public-ip" name="public_ip">
+                {% for ip in public_ips %}
+                <option {% if form.public_ip == ip %}required{% endif %}>{{ ip }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group required">
+        <label for="id-input-public-port" class="control-label col-md-3 requiredField">Public port:</label>
+        <div class="controls col-md-8">
+            <input required type="number" name="public_port" class="form-control input-md" id="id-input-public-port" required="yes"
+                   min="1" max="65535" step="1" value="{{ form.public_port }}"/>
+            <div class="help-block with-errors"></div>
+        </div>
+    </div>
+
+    <div class="form-group required">
+        <label for="id-input-client" class="control-label col-md-3 requiredField">Client IP:</label>
+        <div class="controls col-md-8">
+            <input data-ipv4addr type="text" name="private_ip" class="form-control input-md" id="id-input-client" value="{{ form.private_ip }}"/>
+            <div class="help-block with-errors"></div>
+        </div>
+    </div>
+
+    <div class="form-group required">
+        <label for="id-input-private-port" class="control-label col-md-3 requiredField">Private port:</label>
+        <div class="controls col-md-8">
+            <input required type="number" name="private_port" class="form-control input-md" id="id-input-private-port" required="yes"
+                   min="1" max="65535" step="1" value="{{ form.private_port }}"/>
+            <div class="help-block with-errors"></div>
+        </div>
+    </div>
+
+    <div class="form-group required">
+        <label for="id-select-proto" class="control-label col-md-3 requiredField">Protocol:</label>
+        <div class="controls col-md-8">
+            <select class="form-control" id="id-select-proto" name="proto">
+                <option {% if form.proto == "TCP" %}selected{% endif %}>TCP</option>
+                <option {% if form.proto == "UDP" %}selected{% endif %}>UDP</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group required">
+        <label for="id-input-lifetime" class="control-label col-md-3 requiredField">Lifetime:</label>
+        <div class="controls col-md-8">
+            <input required type="number" name="lifetime" class="form-control input-md" id="id-input-lifetime" required="yes"
+                   min="0" max="65535" step="1" value="{{ form.lifetime }}"/>
+            <div class="help-block with-errors"></div>
+        </div>
+    </div>
+
+    <button class="btn btn-lg btn-primary btn-block" type="submit" id="submit_button">Send</button>
+    <button class="btn btn-lg btn-warning btn-block" id="return_button" onclick="window.location='/dashboard'" type="button">Return</button>
+</form>
+{% endblock %}
