@@ -1,4 +1,4 @@
-from flask                          import Flask, session, request, render_template, redirect
+from flask                          import Flask, session, request, render_template, redirect, flash
 from natpmp_operation.common_utils  import printlog, is_valid_ip_string
 
 import settings
@@ -68,6 +68,9 @@ def init_web_interface():
 
         if ip in mappings and port in mappings[ip] and proto in mappings[ip][port]:
             natpmp_logic_common.remove_mapping(ip, port, proto, "Deleted via web interface")
+            flash("Mapping successfully deleted.", "success")
+        else:
+            flash("Could not delete mapping.", "danger")
 
         return redirect("/dashboard")
 
@@ -140,14 +143,34 @@ def init_web_interface():
             elif cur_mappings and cur_mappings[0]['public_port'] == public_port:
                 # The client already has this mapping, refresh it
                 natpmp_logic_common.create_mapping(public_ip, public_port, proto, private_ip, private_port, lifetime)
+                flash("Mapping successfully created.", "success")
                 return redirect("/dashboard")
 
             # Check that the mapping can be made and do it if so
             if natpmp_logic_common.is_new_mapping_available(public_ip, public_port, proto, private_ip):
                 natpmp_logic_common.create_mapping(public_ip, public_port, proto, private_ip, private_port, lifetime)
+                flash("Mapping successfully created.", "success")
                 return redirect("/dashboard")
             else:
                 return mapping_view("That mapping cannot be created because it's already asigned to another client.", request.form)
+
+    @flask_app.route("/edit-settings", methods=["GET", "POST"])
+    def edit_settings_handler():
+        # Ensure that the user has introduced the correct pasword
+        if settings.WEB_INTERFACE_PASSWORD and not session.get("allowed", False):
+            return redirect("/")
+
+        # Auxiliary function
+        def settings_view(message, form):
+            return render_template("edit-settings.html", message=message, form=form, pass_enabled=bool(settings.WEB_INTERFACE_PASSWORD))
+
+        if request.method == "GET":
+            return settings_view(None, {'allow_v0': settings.ALLOW_VERSION_0, 'allow_v1': settings.ALLOW_VERSION_1, 'allow_tls': settings.ALLOW_TLS_IN_V1,
+                                        'force_tls': settings.FORCE_TLS_IN_V1, 'strict_tls': settings.STRICT_CERTIFICATE_CHECKING,
+                                        'max_port': settings.MAX_ALLOWED_MAPPABLE_PORT, 'min_port': settings.MIN_ALLOWED_MAPPABLE_PORT, 'excluded_ports': str(settings.EXCLUDED_PORTS)[1:-1],
+                                        'max_lifetime': settings.MAX_ALLOWED_LIFETIME, 'min_lifetime': settings.MIN_ALLOWED_LIFETIME, 'fixed_lifetime': settings.FIXED_LIFETIME,
+                                        'blacklist_mode': settings.BLACKLIST_MODE, 'whitelist_mode': settings.WHITELIST_MODE, 'blacklisted_ips': str(settings.BLACKLISTED_IPS)[1:-1].replace("'", "").replace('"', ""),
+                                        'whitelisted_ips': str(settings.WHITELISTED_IPS)[1:-1].replace("'", "").replace('"', ""), 'debug': settings.DEBUG})
 
     #########################################################################################################
 

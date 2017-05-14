@@ -1,0 +1,32 @@
+#form-edit-settings {
+  background-color: #FFFFFF;
+  border: 1px rgba(0,0,0,0.1) solid;
+  max-width: 600px;
+  padding: 30px 50px 50px 50px;
+  margin: 0 auto;
+  /*margin-top: 3%;*/
+ }
+
+#form-header {
+  margin-bottom: 30px;
+}
+
+button {
+  position: relative;
+  font-size: 18px;
+  height: auto;
+  padding: 12px;
+}
+
+span.checkbox-title {
+    font-size: 110%;
+    font-weight: bold;
+}
+
+div.material-switch {
+    margin: 10px;
+}
+
+.material-switch .input-md {
+    width: 40% !important;
+}

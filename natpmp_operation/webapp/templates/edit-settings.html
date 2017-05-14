@@ -1,0 +1,139 @@
+{% extends "master.html" %}
+{% block title %}Daemon settings{% endblock %}
+
+{% block head %}
+    {{ super() }}
+    <link href="/static/css/edit-settings.css" rel="stylesheet">
+    <link href="/static/css/animated-checkboxes.css" rel="stylesheet">
+    <script src="/static/js/validator.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<form id="form-edit-settings" method="post" class="form-horizontal" data-toggle="validator">
+  <h2 id="form-header">NAT-PMP daemon settings</h2>
+
+    {% if message %}
+        <div class="alert alert-danger alert-dismissable">
+          <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+          <strong>Error:</strong> {{ message }}
+        </div>
+    {% endif %}
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Allow v0:</span>
+        <input id="id-allow_v0" name="allow_v0" type="checkbox" {% if form.allow_v0 %}checked{% endif %}/>
+        <label for="id-allow_v0" class="label-primary"></label>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Allow v1:</span>
+        <input id="id-allow_v1" name="allow_v1" type="checkbox" {% if form.allow_v1 %}checked{% endif %}/>
+        <label for="id-allow_v1" class="label-primary"></label>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Allow TLS:</span>
+        <input id="id-allow_tls" name="allow_tls" type="checkbox" {% if form.allow_tls %}checked{% endif %}/>
+        <label for="id-allow_tls" class="label-primary"></label>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Force TLS:</span>
+        <input id="id-force_tls" name="force_tls" type="checkbox" {% if form.force_tls %}checked{% endif %}/>
+        <label for="id-force_tls" class="label-primary"></label>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Strict certificate checking:</span>
+        <input id="id-strict_tls" name="strict_tls" type="checkbox" {% if form.strict_tls %}checked{% endif %}/>
+        <label for="id-strict_tls" class="label-primary"></label>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Max. allowed port:</span>
+        <input required type="number" name="max_port" class="form-control input-md" id="id-max_port" required="yes"
+               min="1" max="65535" step="1" value="{{ form.max_port }}"/>
+        <div class="help-block with-errors col-md-offset-6"></div>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Min. allowed port:</span>
+        <input required type="number" name="min_port" class="form-control input-md" id="id-min_port" required="yes"
+               min="1" max="65535" step="1" value="{{ form.min_port }}"/>
+        <div class="help-block with-errors col-md-offset-6"></div>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Excluded ports:</span>
+        <input required type="text" name="excluded_ports" class="form-control input-md" id="id-excluded_ports" required="yes" value="{{ form.excluded_ports }}"/>
+        <div class="help-block with-errors col-md-offset-6"></div>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Max. lifetime:</span>
+        <input required type="number" name="max_lifetime" class="form-control input-md" id="id-max_lifetime" required="yes"
+               min="1" step="1" value="{{ form.max_lifetime }}"/>
+        <div class="help-block with-errors col-md-offset-6"></div>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Min. lifetime:</span>
+        <input required type="number" name="min_lifetime" class="form-control input-md" id="id-min_lifetime" required="yes"
+               min="1" step="1" value="{{ form.min_lifetime }}"/>
+        <div class="help-block with-errors col-md-offset-6"></div>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Fixed lifetime:</span>
+        <input type="number" name="fixed_lifetime" class="form-control input-md" id="id-fixed_lifetime"
+               min="1" step="1" value="{{ form.fixed_lifetime }}"/>
+        <div class="help-block with-errors col-md-offset-6"></div>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Blacklist mode:</span>
+        <input id="id-blacklist" name="blacklist_mode" type="checkbox" {% if form.blacklist_mode %}checked{% endif %}/>
+        <label for="id-blacklist" class="label-primary"></label>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Blacklisted IPs:</span>
+        <input type="text" name="blacklisted_ips" class="form-control input-md" id="id-blacklisted_ips" value="{{ form.blacklisted_ips }}"/>
+        <div class="help-block with-errors col-md-offset-6"></div>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Whitelist mode:</span>
+        <input id="id-whitelist" name="whitelist_mode" type="checkbox" {% if form.whitelist_mode %}checked{% endif %}/>
+        <label for="id-whitelist" class="label-primary"></label>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Whitelisted IPs:</span>
+        <input type="text" name="whitelisted_ips" class="form-control input-md" id="id-whitelisted_ips" value="{{ form.whitelisted_ips }}"/>
+        <div class="help-block with-errors col-md-offset-6"></div>
+    </div>
+
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Debug mode:</span>
+        <input id="id-debug" name="debug" type="checkbox" {% if form.debug %}checked{% endif %}/>
+        <label for="id-debug" class="label-primary"></label>
+    </div>
+
+    <hr/>
+
+    {% if pass_enabled %}
+    Please, input the administrative password to commit changes:
+    <div class="material-switch row form-group">
+        <span class="checkbox-title col-md-6">Password:</span>
+        <input required type="password" name="password" class="form-control input-md" required="yes"/>
+        <div class="help-block with-errors col-md-offset-6"></div>
+    </div>
+    <hr/>
+    {% endif %}
+
+    <button class="btn btn-lg btn-primary btn-block" type="submit" id="submit_button">Send</button>
+    <button class="btn btn-lg btn-warning btn-block" id="return_button" onclick="window.location='/dashboard'" type="button">Return</button>
+
+</form>
+{% endblock %}
