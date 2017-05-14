@@ -6,6 +6,7 @@
     <link href="/static/css/edit-settings.css" rel="stylesheet">
     <link href="/static/css/animated-checkboxes.css" rel="stylesheet">
     <script src="/static/js/validator.min.js"></script>
+    <script src="/static/js/settings-validator.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -22,31 +23,31 @@
     <div class="material-switch row form-group">
         <span class="checkbox-title col-md-6">Allow v0:</span>
         <input id="id-allow_v0" name="allow_v0" type="checkbox" {% if form.allow_v0 %}checked{% endif %}/>
-        <label for="id-allow_v0" class="label-primary"></label>
+        <label for="id-allow_v0" class="label-primary" id="id-label-allow_v0"></label>
     </div>
 
     <div class="material-switch row form-group">
         <span class="checkbox-title col-md-6">Allow v1:</span>
         <input id="id-allow_v1" name="allow_v1" type="checkbox" {% if form.allow_v1 %}checked{% endif %}/>
-        <label for="id-allow_v1" class="label-primary"></label>
+        <label for="id-allow_v1" class="label-primary" id="id-label-allow_v1"></label>
     </div>
 
     <div class="material-switch row form-group">
         <span class="checkbox-title col-md-6">Allow TLS:</span>
         <input id="id-allow_tls" name="allow_tls" type="checkbox" {% if form.allow_tls %}checked{% endif %}/>
-        <label for="id-allow_tls" class="label-primary"></label>
+        <label for="id-allow_tls" class="label-primary" id="id-label-allow_tls"></label>
     </div>
 
     <div class="material-switch row form-group">
         <span class="checkbox-title col-md-6">Force TLS:</span>
         <input id="id-force_tls" name="force_tls" type="checkbox" {% if form.force_tls %}checked{% endif %}/>
-        <label for="id-force_tls" class="label-primary"></label>
+        <label for="id-force_tls" class="label-primary" id="id-label-force_tls"></label>
     </div>
 
     <div class="material-switch row form-group">
         <span class="checkbox-title col-md-6">Strict certificate checking:</span>
         <input id="id-strict_tls" name="strict_tls" type="checkbox" {% if form.strict_tls %}checked{% endif %}/>
-        <label for="id-strict_tls" class="label-primary"></label>
+        <label for="id-strict_tls" class="label-primary" id="id-label-strict_tls"></label>
     </div>
 
     <div class="material-switch row form-group">
@@ -92,8 +93,8 @@
 
     <div class="material-switch row form-group">
         <span class="checkbox-title col-md-6">Blacklist mode:</span>
-        <input id="id-blacklist" name="blacklist_mode" type="checkbox" {% if form.blacklist_mode %}checked{% endif %}/>
-        <label for="id-blacklist" class="label-primary"></label>
+        <input id="id-blacklist_mode" name="blacklist_mode" type="checkbox" {% if form.blacklist_mode %}checked{% endif %}/>
+        <label for="id-blacklist_mode" class="label-primary" id="id-label-blacklist_mode"></label>
     </div>
 
     <div class="material-switch row form-group">
@@ -104,8 +105,8 @@
 
     <div class="material-switch row form-group">
         <span class="checkbox-title col-md-6">Whitelist mode:</span>
-        <input id="id-whitelist" name="whitelist_mode" type="checkbox" {% if form.whitelist_mode %}checked{% endif %}/>
-        <label for="id-whitelist" class="label-primary"></label>
+        <input id="id-whitelist_mode" name="whitelist_mode" type="checkbox" {% if form.whitelist_mode %}checked{% endif %}/>
+        <label for="id-whitelist_mode" class="label-primary" id="id-label-whitelist_mode"></label>
     </div>
 
     <div class="material-switch row form-group">

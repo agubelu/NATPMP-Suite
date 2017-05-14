@@ -1,3 +1,5 @@
+/* https://bootsnipp.com/snippets/featured/material-design-switch */
+
 .material-switch > input[type="checkbox"] {
     display: none;
 }
@@ -41,4 +43,8 @@
 .material-switch > input[type="checkbox"]:checked + label::after {
     background: inherit;
     left: 20px;
+}
+
+input[type="checkbox"]:disabled + label {
+    cursor: not-allowed;
 }
