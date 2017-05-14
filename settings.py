@@ -36,6 +36,6 @@ WHITELISTED_IPS = [
 
 ALLOW_WEB_INTERFACE = True
 WEB_INTERFACE_PORT = 80
-WEB_INTERFACE_PASSWORD = "a"  # Set to an empty string, False or None to not require password.
+WEB_INTERFACE_PASSWORD = ""  # Set to anything falsey (False, None, "", ...) to disable it
 
 DEBUG = False  # If set to True, will print the current state of all mappings after every request.

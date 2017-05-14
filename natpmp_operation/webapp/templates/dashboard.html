@@ -18,17 +18,6 @@
 
     <div class="col-md-10 col-md-offset-1">
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissable">
-                  <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
-                  <strong>{{ message }}</strong>
-                </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-
         <div class="panel panel-default panel-table">
           <div class="panel-heading">
             <div class="row">
@@ -47,6 +36,17 @@
                 </div>
             </div>
           </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissable">
+                  <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                  <strong>{{ message }}</strong>
+                </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
           <div class="panel-body">
             <table data-toggle="table" class="table table-striped table-bordered table-list" data-sort-name="expiration" data-sort-order="asc">

@@ -60,7 +60,7 @@
     <div class="form-group required">
         <label for="id-input-client" class="control-label col-md-3 requiredField">Client IP:</label>
         <div class="controls col-md-8">
-            <input data-ipv4addr type="text" name="private_ip" class="form-control input-md" id="id-input-client" value="{{ form.private_ip }}"/>
+            <input required required="yes" data-ipv4addr type="text" name="private_ip" class="form-control input-md" id="id-input-client" value="{{ form.private_ip }}"/>
             <div class="help-block with-errors"></div>
         </div>
     </div>
