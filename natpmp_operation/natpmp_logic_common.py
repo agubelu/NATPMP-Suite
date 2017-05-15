@@ -294,13 +294,13 @@ def operation_exchange_certs(request):
     try:
         cert = security_module.get_cert_from_bytes(request.cert_bytes)
     except InvalidCertificateException as e:
-        print("Denying handshake from %s: %s" % (client_ip, str(e)))
+        printlog("Denying handshake from %s: %s" % (client_ip, str(e)))
         send_denied_handshake_response(request, NATPMP_RESULT_BAD_CERT)
         return
 
     # Check that the cert matches the client's IP address
     if not security_module.is_cert_valid_for_ip(cert, client_ip):
-        print("Denying handshake from %s: Certificate not valid for the client's IP." % client_ip)
+        printlog("Denying handshake from %s: Certificate not valid for the client's IP." % client_ip)
         send_denied_handshake_response(request, NATPMP_RESULT_BAD_CERT)
         return
 
