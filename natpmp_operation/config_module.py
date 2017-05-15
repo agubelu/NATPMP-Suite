@@ -22,7 +22,7 @@ def get_params_namespace():
     # Use the argument parser from Python 3.5 stdlib and return the corresponding namespace
     parser = argparse.ArgumentParser(description="A NAT-PMP daemon with some substantial enhancements to the base protocol.")
 
-    parser.add_argument('--use-settings-file', '-f', action='store_true',
+    parser.add_argument('--use-settings-file', '-file', action='store_true',
                         help="Uses the settings.py file to configure the daemon, all other parameters will be ignored.")
 
     parser.add_argument('--private-interfaces', '-p', nargs='+', help="Private interfaces to listen for requests.",
