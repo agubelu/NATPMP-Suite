@@ -43,6 +43,9 @@ $(function() {
     var strict_tls = $("#id-strict_tls");
     var blacklist_mode = $("#id-blacklist_mode");
     var whitelist_mode = $("#id-whitelist_mode");
+    var max_lifetime = $("#id-max_lifetime");
+    var min_lifetime = $("#id-min_lifetime");
+    var fixed_lifetime = $("#id-fixed_lifetime");
 
     allow_v0.change(function() {
         if(!checked($(this)) && !checked(allow_v1)) {
@@ -114,6 +117,39 @@ $(function() {
             $("#id-label-blacklist_mode").click();
         }
     });
+
+    fixed_lifetime.change(function() {
+        if(fixed_lifetime.val() == "") {
+            max_lifetime.attr("readonly", false);
+            min_lifetime.attr("readonly", false);
+        } else {
+            max_lifetime.attr("readonly", true);
+            min_lifetime.attr("readonly", true);
+        }
+    });
+
+    //////////////////////////////////////////////////////////////////
+
+    if(fixed_lifetime.val() == "") {
+        max_lifetime.attr("readonly", false);
+        min_lifetime.attr("readonly", false);
+    } else {
+        max_lifetime.attr("readonly", true);
+        min_lifetime.attr("readonly", true);
+    }
+
+    if(!checked(allow_v1)) {
+        use_tls.attr("disabled", true);
+        force_tls.attr("disabled", true);
+        strict_tls.attr("disabled", true);
+    }
+
+    if(!checked(use_tls)) {
+        force_tls.attr("disabled", true);
+        strict_tls.attr("disabled", true);
+    }
+
+    //////////////////////////////////////////////////////////////////
 
     $("#form-edit-settings").validator({
         custom: {
