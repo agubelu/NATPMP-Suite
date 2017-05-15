@@ -16,7 +16,7 @@
 
                     for(var i = 0; i < 4; i++) {
                         var d = spl[i];
-                        if(!/\d{1,3}/.test(d) || d > 255) return "Must be a valid IPv4 address.";
+                        if(!/^\d{1,3}$/.test(d) || d > 255) return "Must be a valid IPv4 address.";
                     }
                 }
             }
@@ -29,7 +29,7 @@
 
 {% block content %}
 
-<form id="form-create-mapping" method="post" class="form-horizontal" data-toggle="validator">
+<form id="form-create-mapping" method="post" class="form-horizontal">
   <h2 id="form-header">NAT mapping creation</h2>
 
     {% if message %}

@@ -4,6 +4,38 @@ $(function() {
         return el.is(":checked");
     }
 
+    function is_integer(str) {
+        return str !== "" && /^\d+$/.test(str);
+    }
+
+    function is_port(str) {
+        return is_integer(str) && str >= 1 && str <= 65535;
+    }
+
+    function is_ipv4(str) {
+        if(str === "") return false;
+
+        var spl = str.split(".");
+        if(spl.length != 4) return false;
+
+        for(var i = 0; i < 4; i++) {
+            var d = spl[i];
+            if(!/^\d{1,3}$/.test(d) || d > 255) return false;
+        }
+
+        return true;
+    }
+
+    function check_list(list, pred) {
+        if(list === "") return true;
+        var spl = list.split(",");
+        for(var i = 0; i < spl.length; i++) {
+            if(!pred(spl[i].trim())) return false;
+        }
+
+        return true;
+    }
+
     var allow_v0 = $("#id-allow_v0");
     var allow_v1 = $("#id-allow_v1");
     var use_tls = $("#id-allow_tls");
@@ -44,8 +76,10 @@ $(function() {
 
         } else {
             use_tls.attr("disabled", false);
-            force_tls.attr("disabled", false);
-            strict_tls.attr("disabled", false);
+            if(checked(use_tls)) {
+                force_tls.attr("disabled", false);
+                strict_tls.attr("disabled", false);
+            }
         }
     });
 
@@ -80,5 +114,23 @@ $(function() {
             $("#id-label-blacklist_mode").click();
         }
     });
+
+    $("#form-edit-settings").validator({
+        custom: {
+            'ipv4list': function(el) {
+                if(!check_list(el.val(), is_ipv4)) {
+                    return "Must be a comma-separated list of valid IPv4 addresses.";
+                }
+            },
+
+            'portlist': function(el) {
+                if(!check_list(el.val(), is_port)) {
+                    return "Must be a comma-separated list of valid ports.";
+                }
+            }
+        }
+    });
+
+    $("#form-edit-settings").validator('update');
 
 });
