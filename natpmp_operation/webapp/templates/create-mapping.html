@@ -10,8 +10,8 @@
     $(function() {
         $("#form-create-mapping").validator({
             custom: {
-                'ipv4addr': function($el) {
-                    var spl = $el.val().split(".");
+                'ipv4addr': function(el) {
+                    var spl = el.val().split(".");
                     if(spl.length != 4) return "Must be a valid IPv4 address.";
 
                     for(var i = 0; i < 4; i++) {
@@ -21,6 +21,8 @@
                 }
             }
         });
+
+        $("#form-create-mapping").validator('update');
     });
     </script>
 {% endblock %}
