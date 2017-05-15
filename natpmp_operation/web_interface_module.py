@@ -171,6 +171,158 @@ def init_web_interface():
                                         'max_lifetime': settings.MAX_ALLOWED_LIFETIME, 'min_lifetime': settings.MIN_ALLOWED_LIFETIME, 'fixed_lifetime': settings.FIXED_LIFETIME,
                                         'blacklist_mode': settings.BLACKLIST_MODE, 'whitelist_mode': settings.WHITELIST_MODE, 'blacklisted_ips': str(settings.BLACKLISTED_IPS)[1:-1].replace("'", "").replace('"', ""),
                                         'whitelisted_ips': str(settings.WHITELISTED_IPS)[1:-1].replace("'", "").replace('"', ""), 'debug': settings.DEBUG})
+        else:
+            form = request.form
+            # Check that the password is there if it's set
+            if settings.WEB_INTERFACE_PASSWORD and ("password" not in form or form["password"] != settings.WEB_INTERFACE_PASSWORD):
+                return settings_view("The password is not correct.", form)
+
+            # Check that all of the required params are there
+            if not all(param in form for param in ["max_port", "min_port", "excluded_ports", "max_lifetime", "min_lifetime", "fixed_lifetime", "blacklisted_ips", "whitelisted_ips"]):
+                return settings_view("At least one mandatory field wasn't provided.", form)
+
+            # Dump them into variables
+            allow_v0 = "allow_v0" in form and form["allow_v0"]
+            allow_v1 = "allow_v1" in form and form["allow_v1"]
+            allow_tls = "allow_tls" in form and form["allow_tls"]
+            force_tls = "force_tls" in form and form["force_tls"]
+            strict_tls = "strict_tls" in form and form["strict_tls"]
+            max_port = form["max_port"]
+            min_port = form["min_port"]
+            excluded_ports = form["excluded_ports"]
+            max_lifetime = form["max_lifetime"]
+            min_lifetime = form["min_lifetime"]
+            fixed_lifetime = form["fixed_lifetime"]
+            blacklist_mode = "blacklist_mode" in form and form["blacklist_mode"]
+            whitelist_mode = "whitelist_mode" in form and form["whitelist_mode"]
+            blacklisted_ips = form["blacklisted_ips"]
+            whitelisted_ips = form["whitelisted_ips"]
+            debug = "debug" in form and form["debug"]
+
+            # Check that they are all OK
+            if not allow_v0 and not allow_v1:
+                return settings_view("At least either version must be enabled", form)
+
+            if allow_tls and not allow_v1:
+                return settings_view("TLS can only be enabled if v1 is enabled.", form)
+
+            if (force_tls or strict_tls) and not allow_tls:
+                return settings_view("TLS settings require that TLS is enabled.", form)
+
+            try:
+                max_port = int(max_port)
+                if not 1 <= max_port <= 65535:
+                    raise ValueError
+            except ValueError:
+                return settings_view("The maximum port must be between 1 and 65535.", form)
+
+            try:
+                min_port = int(min_port)
+                if not 1 <= min_port <= 65535:
+                    raise ValueError
+            except ValueError:
+                return settings_view("The minimum port must be between 1 and 65535.", form)
+
+            if not excluded_ports:
+                excluded_ports = []
+            else:
+                tmp = []
+                for spl in excluded_ports.split(","):
+                    spl = spl.strip()
+                    try:
+                        spl = int(spl)
+                        if not 1 <= spl <= 65535:
+                            raise ValueError
+                        tmp.append(spl)
+                    except ValueError:
+                        return settings_view("Port %s from excluded ports is not a valid port." % spl, form)
+                excluded_ports = tmp
+
+            try:
+                max_lifetime = int(max_lifetime)
+                if not max_lifetime >= 1:
+                    raise ValueError
+            except ValueError:
+                return settings_view("The maximum lifetime must be greater than 1.", form)
+
+            try:
+                min_lifetime = int(min_lifetime)
+                if not min_lifetime >= 1:
+                    raise ValueError
+            except ValueError:
+                return settings_view("The maximum lifetime must be greater than 1.", form)
+
+            if fixed_lifetime:
+                try:
+                    fixed_lifetime = int(fixed_lifetime)
+                    if not fixed_lifetime >= 1:
+                        raise ValueError
+                except ValueError:
+                    return settings_view("The fixed lifetime must be greater than 1.", form)
+            else:
+                fixed_lifetime = None
+
+            if blacklist_mode and whitelist_mode:
+                return settings_view("Blacklist and whitelist mode cannot be both active at once.", form)
+
+            if not blacklisted_ips:
+                blacklisted_ips = []
+            else:
+                tmp = []
+                for spl in blacklisted_ips.split(","):
+                    spl = spl.strip()
+                    if not is_valid_ip_string(spl):
+                        return settings_view("IP %s from the blacklist is not a valid address." % spl, form)
+                    tmp.append(spl)
+                blacklisted_ips = tmp
+
+            if not whitelisted_ips:
+                whitelisted_ips = []
+            else:
+                tmp = []
+                for spl in whitelisted_ips.split(","):
+                    spl = spl.strip()
+                    if not is_valid_ip_string(spl):
+                        return settings_view("IP %s from the whitelist is not a valid address." % spl, form)
+                    tmp.append(spl)
+                    whitelisted_ips = tmp
+
+            # All settings are valid by now, dump them into the settings module
+            settings.ALLOW_VERSION_0 = allow_v0
+            settings.ALLOW_VERSION_1 = allow_v1
+            settings.ALLOW_TLS_IN_V1 = allow_tls
+            settings.FORCE_TLS_IN_V1 = force_tls
+            settings.STRICT_CERTIFICATE_CHECKING = strict_tls
+            settings.MAX_ALLOWED_MAPPABLE_PORT = max_port
+            settings.MIN_ALLOWED_MAPPABLE_PORT = min_port
+            settings.EXCLUDED_PORTS = excluded_ports
+            settings.MAX_ALLOWED_LIFETIME = max_lifetime
+            settings.MIN_ALLOWED_LIFETIME = min_lifetime
+            settings.FIXED_LIFETIME = fixed_lifetime
+            settings.BLACKLIST_MODE = blacklist_mode
+            settings.BLACKLISTED_IPS = blacklisted_ips
+            settings.WHITELIST_MODE = whitelist_mode
+            settings.WHITELISTED_IPS = whitelisted_ips
+            settings.DEBUG = debug
+
+            # Perform some additional changes if needed
+            from natpmp_operation import natpmp_logic_common
+            if allow_tls and natpmp_logic_common.NATPMP_OPCODE_SENDCERT not in natpmp_logic_common.SUPPORTED_OPCODES[1]:
+                natpmp_logic_common.SUPPORTED_OPCODES[1].append(natpmp_logic_common.NATPMP_OPCODE_SENDCERT)
+            elif not allow_tls and natpmp_logic_common.NATPMP_OPCODE_SENDCERT in natpmp_logic_common.SUPPORTED_OPCODES[1]:
+                natpmp_logic_common.SUPPORTED_OPCODES[1].remove(natpmp_logic_common.NATPMP_OPCODE_SENDCERT)
+
+            import logging
+            log = logging.getLogger('werkzeug')
+
+            if debug:
+                log.setLevel(logging.DEBUG)
+            else:
+                log.setLevel(logging.ERROR)
+
+            printlog("Settings changed via web interface.")
+            flash("Settings updated.", "success")
+            return redirect("/dashboard")
 
     #########################################################################################################
 
