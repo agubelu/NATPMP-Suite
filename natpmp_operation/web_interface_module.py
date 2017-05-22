@@ -7,7 +7,6 @@ import os
 
 def init_web_interface():
 
-    # TODO edicion de lifetime
     flask_app = Flask(__name__, static_folder="webapp/static", template_folder="webapp/templates")
     flask_app.secret_key = os.urandom(16)
     interface_port = settings.WEB_INTERFACE_PORT
