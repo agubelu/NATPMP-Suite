@@ -150,7 +150,7 @@ class MainFrame(Frame):
         frame_usetls = Frame(frame_right)
         frame_usetls.pack(fill=X)
 
-        self.label_usetls = Label(frame_usetls, text="Use TLS:", width=LABEL_WIDTH, anchor=E)
+        self.label_usetls = Label(frame_usetls, text="Secure\nrequest:", width=LABEL_WIDTH, anchor=E)
         self.label_usetls.pack(side=LEFT, padx=PADDING_AMOUNT, pady=PADDING_AMOUNT)
 
         var_check_tls = IntVar()
