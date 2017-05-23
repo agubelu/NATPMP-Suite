@@ -14,7 +14,7 @@ def init_tables():
     create_tables()
     flush_tables()
     exec_or_die("nft add chain %s prerouting { type nat hook prerouting priority 0 ; }" % NATPMP_TABLE_NAME)
-    exec_or_die("nft add chain %s postrouting { type nat hook postrouting priority 100 ; }" % NATPMP_TABLE_NAME)
+    exec_or_die("nft add chain %s postrouting { type nat hook postrouting priority 100 ; masquerade ; }" % NATPMP_TABLE_NAME)
 
     printlog("Table '%s' initialized on nftables." % NATPMP_TABLE_NAME)
 
