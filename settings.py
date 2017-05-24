@@ -1,10 +1,9 @@
 PRIVATE_INTERFACES = [
-    "192.168.1.0",
-    "10.0.0.1",
+    "127.0.0.1",
 ]
 
 PUBLIC_INTERFACES = [
-    "80.102.236.61",
+    "192.168.159.129",
 ]
 
 ALLOW_VERSION_0 = True
@@ -36,7 +35,7 @@ WHITELISTED_IPS = [
 ]
 
 ALLOW_WEB_INTERFACE = True
-WEB_INTERFACE_PORT = 80
+WEB_INTERFACE_PORT = 8080
 WEB_INTERFACE_PASSWORD = ""  # Set to anything falsey (False, None, "", ...) to disable it
 
 DEBUG = False  # If set to True, will print the current state of all mappings after every request.

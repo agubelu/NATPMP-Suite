@@ -21,25 +21,25 @@
     {% endif %}
 
     <div class="material-switch row form-group">
-        <span class="checkbox-title col-md-6">Allow v0:</span>
+        <span class="checkbox-title col-md-6">Allow v0 (RFC 6886):</span>
         <input id="id-allow_v0" name="allow_v0" type="checkbox" {% if form.allow_v0 %}checked{% endif %}/>
         <label for="id-allow_v0" class="label-primary" id="id-label-allow_v0"></label>
     </div>
 
     <div class="material-switch row form-group">
-        <span class="checkbox-title col-md-6">Allow v1:</span>
+        <span class="checkbox-title col-md-6">Allow v1 (unofficial):</span>
         <input id="id-allow_v1" name="allow_v1" type="checkbox" {% if form.allow_v1 %}checked{% endif %}/>
         <label for="id-allow_v1" class="label-primary" id="id-label-allow_v1"></label>
     </div>
 
     <div class="material-switch row form-group">
-        <span class="checkbox-title col-md-6">Allow TLS:</span>
+        <span class="checkbox-title col-md-6">Allow secure requests:</span>
         <input id="id-allow_tls" name="allow_tls" type="checkbox" {% if form.allow_tls %}checked{% endif %}/>
         <label for="id-allow_tls" class="label-primary" id="id-label-allow_tls"></label>
     </div>
 
     <div class="material-switch row form-group">
-        <span class="checkbox-title col-md-6">Force TLS:</span>
+        <span class="checkbox-title col-md-6">Force secure requests in v1:</span>
         <input id="id-force_tls" name="force_tls" type="checkbox" {% if form.force_tls %}checked{% endif %}/>
         <label for="id-force_tls" class="label-primary" id="id-label-force_tls"></label>
     </div>
