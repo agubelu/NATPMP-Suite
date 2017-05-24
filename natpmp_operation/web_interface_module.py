@@ -164,8 +164,8 @@ def init_web_interface():
             return render_template("edit-settings.html", message=message, form=form, pass_enabled=bool(settings.WEB_INTERFACE_PASSWORD))
 
         if request.method == "GET":
-            return settings_view(None, {'allow_v0': settings.ALLOW_VERSION_0, 'allow_v1': settings.ALLOW_VERSION_1, 'allow_tls': settings.ALLOW_TLS_IN_V1,
-                                        'force_tls': settings.FORCE_TLS_IN_V1, 'strict_tls': settings.STRICT_CERTIFICATE_CHECKING,
+            return settings_view(None, {'allow_v0': settings.ALLOW_VERSION_0, 'allow_v1': settings.ALLOW_VERSION_1, 'allow_tls': settings.ALLOW_SECURITY_IN_V1,
+                                        'force_tls': settings.FORCE_SECURITY_IN_V1, 'strict_tls': settings.STRICT_CERTIFICATE_CHECKING,
                                         'max_port': settings.MAX_ALLOWED_MAPPABLE_PORT, 'min_port': settings.MIN_ALLOWED_MAPPABLE_PORT, 'excluded_ports': str(settings.EXCLUDED_PORTS)[1:-1],
                                         'max_lifetime': settings.MAX_ALLOWED_LIFETIME, 'min_lifetime': settings.MIN_ALLOWED_LIFETIME, 'fixed_lifetime': settings.FIXED_LIFETIME,
                                         'blacklist_mode': settings.BLACKLIST_MODE, 'whitelist_mode': settings.WHITELIST_MODE, 'blacklisted_ips': str(settings.BLACKLISTED_IPS)[1:-1].replace("'", "").replace('"', ""),
@@ -289,8 +289,8 @@ def init_web_interface():
             # All settings are valid by now, dump them into the settings module
             settings.ALLOW_VERSION_0 = allow_v0
             settings.ALLOW_VERSION_1 = allow_v1
-            settings.ALLOW_TLS_IN_V1 = allow_tls
-            settings.FORCE_TLS_IN_V1 = force_tls
+            settings.ALLOW_SECURITY_IN_V1 = allow_tls
+            settings.FORCE_SECURITY_IN_V1 = force_tls
             settings.STRICT_CERTIFICATE_CHECKING = strict_tls
             settings.MAX_ALLOWED_MAPPABLE_PORT = max_port
             settings.MIN_ALLOWED_MAPPABLE_PORT = min_port

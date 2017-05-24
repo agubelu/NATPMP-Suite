@@ -20,7 +20,7 @@ if __name__ == "__main__":
     process_command_line_params()
 
     import settings
-    if settings.ALLOW_TLS_IN_V1:
+    if settings.ALLOW_SECURITY_IN_V1:
         security_module.initialize_root_certificate()
 
     # Init nft tables

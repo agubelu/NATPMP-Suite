@@ -41,7 +41,7 @@ SUPPORTED_OPCODES = {
     1: [NATPMP_OPCODE_INFO, NATPMP_OPCODE_MAPUDP, NATPMP_OPCODE_MAPTCP],
 }
 
-if settings.ALLOW_TLS_IN_V1:
+if settings.ALLOW_SECURITY_IN_V1:
     SUPPORTED_OPCODES[1].append(NATPMP_OPCODE_SENDCERT)
 
 # Initialize the mapping status to an empty one
@@ -424,7 +424,7 @@ def check_client_authorization(request, handshake=False):
 
         return False
 
-    if not handshake and settings.FORCE_TLS_IN_V1 and request.version == 1 and ip_addr not in security_module.TLS_IPS:
+    if not handshake and settings.FORCE_SECURITY_IN_V1 and request.version == 1 and ip_addr not in security_module.TLS_IPS:
         # If the current request is not a handshake, TLS is enforced, and the issuer has not still sent a handshake, deny the response
         printlog("Rejecting request from %s: plain-text request while TLS is enforced." % ip_addr)
         send_denied_response(request, NATPMP_RESULT_TLS_ONLY)

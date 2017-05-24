@@ -34,10 +34,10 @@ def get_params_namespace():
     parser.add_argument('--version0', '-v0', action='store_true', help="Allow usage of the NAT-PMP version 0")
     parser.add_argument('--version1', '-v1', action='store_true', help="Allow usage of the NAT-PMP version 1")
 
-    parser.add_argument('--allow-tls', '-tls', action='store_true',
-                        help="Allow TLS and security functions when using NAT-PMP version 1")
-    parser.add_argument('--force-tls', '-ftls', action='store_true',
-                        help="Denies non-TLS requests when using NAT-PMP version 1")
+    parser.add_argument('--allow-security', '-sec', action='store_true',
+                        help="Allow secure requests when using NAT-PMP version 1")
+    parser.add_argument('--force-security', '-fsec', action='store_true',
+                        help="Denies non-secure requests when using NAT-PMP version 1")
     parser.add_argument('--strict-certs', '-s', action='store_true',
                         help="Only accept certificates issued by the daemon")
 
@@ -95,8 +95,8 @@ def push_namespace_to_settings(namespace):
     settings.PUBLIC_INTERFACES = namespace.public_interfaces
     settings.ALLOW_VERSION_0 = namespace.version0
     settings.ALLOW_VERSION_1 = namespace.version1
-    settings.ALLOW_TLS_IN_V1 = namespace.allow_tls
-    settings.FORCE_TLS_IN_V1 = namespace.force_tls
+    settings.ALLOW_SECURITY_IN_V1 = namespace.allow_security
+    settings.FORCE_SECURITY_IN_V1 = namespace.force_security
     settings.STRICT_CERTIFICATE_CHECKING = namespace.strict_certs
     settings.MIN_ALLOWED_MAPPABLE_PORT = namespace.min_port
     settings.MAX_ALLOWED_MAPPABLE_PORT = namespace.max_port
@@ -157,15 +157,15 @@ def assert_settings_ok():
         sys.exit("Error: must allow at least one version of the protocol (either 0, 1 or both).")
 
     # Raise a warning if TLS is enabled but version 1 isn't
-    if settings.ALLOW_TLS_IN_V1 and not settings.ALLOW_VERSION_1:
+    if settings.ALLOW_SECURITY_IN_V1 and not settings.ALLOW_VERSION_1:
         printerr("Warning: TLS in version 1 is enabled but version 1 itself is not. This configuration parameter will have no effect.")
 
     # Raise a warning if TLS is forced but version 1 isn't
-    if settings.FORCE_TLS_IN_V1 and not settings.ALLOW_VERSION_1:
+    if settings.FORCE_SECURITY_IN_V1 and not settings.ALLOW_VERSION_1:
         printerr("Warning: TLS in version 1 is forced but version 1 itself is not. This configuration parameter will have no effect.")
 
     # Raise a warning if TLS is forced but TLS is not enabled
-    if settings.FORCE_TLS_IN_V1 and not settings.ALLOW_TLS_IN_V1:
+    if settings.FORCE_SECURITY_IN_V1 and not settings.ALLOW_SECURITY_IN_V1:
         sys.exit("Error: Force TLS is enabled but TLS itself is not. Clients will not be able to issue requests for V1.")
 
     # Raise a warning if strict certs are enabled but version 1 isn't
@@ -173,7 +173,7 @@ def assert_settings_ok():
         printerr("Warning: Strict certificate checking is enabled but version 1 itself is not. This configuration parameter will have no effect.")
 
     # Raise a warning if strict certs are enabled but TLS isn't
-    if settings.STRICT_CERTIFICATE_CHECKING and not settings.ALLOW_TLS_IN_V1:
+    if settings.STRICT_CERTIFICATE_CHECKING and not settings.ALLOW_SECURITY_IN_V1:
         printerr("Warning: Strict certificate checking is enabled but version TLS itself is not. This configuration parameter will have no effect.")
 
     # Raise a warning if the minimum allowed port is less than 1
