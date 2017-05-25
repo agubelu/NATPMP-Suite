@@ -27,9 +27,9 @@ def from_namespace(namespace):
         lifetime = int(namespace.l)
         public_ips = namespace.ips
 
-    use_tls = bool(namespace.tls)
-    tls_cert = namespace.tls[0] if namespace.tls else None
-    tls_key = namespace.tls[1] if namespace.tls else None
+    use_tls = bool(namespace.sec)
+    tls_cert = namespace.sec[0] if namespace.sec else None
+    tls_key = namespace.sec[1] if namespace.sec else None
     router = namespace.g
 
     return CommonClientRequest(version, opcode, priv_port, pub_port, lifetime, public_ips, use_tls, tls_cert, tls_key, router)

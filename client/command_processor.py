@@ -30,7 +30,7 @@ def get_commands_namespace():
     parser.add_argument('-l', nargs='?', help="Lifetime for the port mapping request.", metavar="seconds", type=int, default=7200, const=7200)
     parser.add_argument('-ips', nargs='+', help="When issuing a v1 request, must include the public interfaces to map into.", metavar="ip_address")
 
-    parser.add_argument('-tls', nargs=2, help="Send a secured request with v1, using the selected certificate and private key.",
+    parser.add_argument('-sec', nargs=2, help="Send a secured request with v1, using the selected certificate and private key.",
                         metavar=('cert_path', 'key_path'), type=argparse.FileType('rb'))
 
     parser.add_argument('-g', nargs='?', help="Gateway to send the request to. If not specified, will try to guess the default gateway.",
@@ -61,7 +61,7 @@ def check_ok_settings(namespace):
         if namespace.req[2].upper() not in ['TCP', 'UDP']:
             sys.exit("The protocol for the mapping must be either TCP or UDP")
 
-    if namespace.tls and namespace.v0:
+    if namespace.sec and namespace.v0:
         sys.exit("NAT-PMP v0 does not support secure requests.")
 
     if namespace.ips and namespace.v0:

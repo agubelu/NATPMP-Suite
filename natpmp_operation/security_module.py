@@ -292,11 +292,11 @@ def add_ip_to_tls_enabled(ip_addr, cert, nonce):
     # If it's already in the dict, update the removal time
     if ip_addr in TLS_IPS:
         TLS_IPS[ip_addr]['job'].reschedule(autoremoval_trigger)
-        printlog("Renewing %s in TLS-enabled IPs" % ip_addr)
+        printlog("Renewing %s as a secure IP" % ip_addr)
     else:
         job = enabled_ips_scheduler.add_job(remove_ip_from_tls_enabled, trigger=autoremoval_trigger, args=(ip_addr, True))
         TLS_IPS[ip_addr] = {'cert': cert, 'job': job, 'nonce': nonce}
-        printlog("Adding %s to TLS-enabled IPs" % ip_addr)
+        printlog("Adding %s to secure IPs" % ip_addr)
 
 
 def remove_ip_from_tls_enabled(ip_addr, auto=False):
@@ -305,7 +305,7 @@ def remove_ip_from_tls_enabled(ip_addr, auto=False):
             TLS_IPS[ip_addr]['job'].remove()
         del TLS_IPS[ip_addr]
 
-        logtext = "Removing %s from TLS-enabled IPs" % ip_addr
+        logtext = "Removing %s from secure IPs" % ip_addr
         if auto:
             logtext += " (timed out)"
         printlog(logtext)
