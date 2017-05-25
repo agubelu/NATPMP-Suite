@@ -110,6 +110,15 @@ def push_namespace_to_settings(namespace):
     settings.WHITELISTED_IPS = namespace.whitelisted_addresses
     settings.DEBUG = namespace.debug
 
+    if settings.EXCLUDED_PORTS is None:
+        settings.EXCLUDED_PORTS = []
+
+    if settings.BLACKLISTED_IPS is None:
+        settings.BLACKLISTED_IPS = []
+
+    if settings.WHITELISTED_IPS is None:
+        settings.WHITELISTED_IPS = []
+
     if namespace.web:
         settings.ALLOW_WEB_INTERFACE = True
         settings.WEB_INTERFACE_PORT = namespace.web[0]
