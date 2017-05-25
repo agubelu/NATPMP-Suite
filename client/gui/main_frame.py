@@ -26,6 +26,7 @@ class MainFrame(Frame):
 
         self.parent.title("NAT-PMP Client")
         self.pack(fill=BOTH, expand=True)
+        ttk.Style().map('TCombobox', fieldbackground=[('readonly','white')])
 
         frame_top_controls = Frame(self)
         frame_top_controls.pack(side=TOP, anchor=N)
