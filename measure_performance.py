@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 
-from .. import natpmp_operation
-
-from ..natpmp_operation.natpmp_logic_common   import NATPMP_OPCODE_INFO, NATPMP_OPCODE_MAPUDP, NATPMP_RESULT_OK, NATPMP_RESULT_VERSION_NOT_SUPPORTED, NATPMP_RESULT_NOT_AUTHORIZED, \
+from natpmp_operation.natpmp_logic_common import NATPMP_OPCODE_INFO, NATPMP_OPCODE_MAPUDP, NATPMP_RESULT_OK, NATPMP_RESULT_VERSION_NOT_SUPPORTED, NATPMP_RESULT_NOT_AUTHORIZED, \
                                                    NATPMP_RESULT_NETWORK_ERROR, NATPMP_RESULT_INSUFFICIENT_RESOURCES, NATPMP_RESULT_OPCODE_NOT_SUPPORTED, NATPMP_RESULT_MULTIASSIGN_FAILED, \
                                                    NATPMP_RESULT_TLS_ONLY, NATPMP_RESULT_BAD_CERT
-from ..natpmp_operation.security_module       import load_private_key_asking_for_password, sign_and_cipher_data_with_nonce, decipher_and_check_signature_and_nonce
-from ..natpmp_packets.NATPMPCertHandshake     import NATPMPCertHandshake
-from ..natpmp_packets.NATPMPRequest           import NATPMPRequest
-from ..natpmp_operation.common_utils          import is_valid_ip_string
-from ..client.network_utils                   import send_and_receive_with_timeout
+from natpmp_operation.security_module import load_private_key_asking_for_password, sign_and_cipher_data_with_nonce, decipher_and_check_signature_and_nonce
+from natpmp_packets.NATPMPCertHandshake import NATPMPCertHandshake
+from natpmp_packets.NATPMPRequest import NATPMPRequest
+from natpmp_operation.common_utils import is_valid_ip_string
+from client.network_utils import send_and_receive_with_timeout
 
 from cryptography.hazmat.backends           import default_backend
 from cryptography                           import x509
@@ -23,6 +21,51 @@ import sys
 
 NATPMP_PORT = 5351
 RESULT_TIMED_OUT = -1
+
+
+def get_namespace():
+    parser = argparse.ArgumentParser(description="NAT-PMP performance meter.")
+
+    parser.add_argument('-v', nargs='?', help="Version of the NAT-PMP protocol to use.", metavar="version", type=int,
+                        default=0)
+    parser.add_argument('-n', nargs='?', help="Number of requests to send.", metavar="count", type=int,
+                        default=1000)
+    parser.add_argument('-t', nargs='?', help="Amount of time (milliseconds) to consider a request as timed out.", metavar="millis", type=int,
+                        default=1000)
+    parser.add_argument('-g', nargs='?', help="Gateway address.", metavar="gateway")
+    parser.add_argument('-op', nargs='?', help="Operation to do against the gateway.", metavar="info/req")
+    parser.add_argument('-ips', nargs='+',
+                        help="When issuing a v1 request, must include the public interfaces to map into.",
+                        metavar="ip_address")
+    parser.add_argument('-sec', nargs=2,
+                        help="Send a secured request with v1, using the selected certificate and private key.",
+                        metavar=('cert_path', 'key_path'), type=argparse.FileType('rb'))
+
+    namespace = parser.parse_args()
+    
+    check_params_ok(namespace)
+    return namespace
+
+
+def check_params_ok(namespace):
+    if not 0 <= namespace.v <= 1:
+        sys.exit("Only version 0 and 1 are currently supported.")
+
+    if namespace.n < 1:
+        sys.exit("Please, provide a request count greater than zero.")
+
+    if namespace.t < 1:
+        sys.exit("Please, provide a timeout amount greater than zero milliseconds.")
+
+    if not namespace.g or not is_valid_ip_string(namespace.g):
+        sys.exit("Please, provide a valid gateway address using the -g flag.")
+
+    if not namespace.op or namespace.op not in ["info", "req"]:
+        sys.exit("Please, provide a valid operation using the -op flag (info/req)")
+
+    if namespace.v == 1 and namespace.op == "req":
+        if not namespace.ips or any(not is_valid_ip_string(x) for x in namespace.ips):
+            sys.exit("At least one argument provided by the -ips flag is not a valid IP address.")
 
 if __name__ == "__main__":
     namespace = get_namespace()
@@ -52,12 +95,13 @@ if __name__ == "__main__":
     # Init requests
     if use_tls:
         cert_exchange_request = NATPMPCertHandshake(version, 3, 0, bytearray(8), cert_bytes)
-    elif operation == NATPMP_OPCODE_INFO:
+
+    if operation == NATPMP_OPCODE_INFO:
         operation_request = NATPMPRequest(version, operation)
     elif version == 0:
-        operation_request = NATPMPRequest(version, operation, 0, 0, 0, 60)
+        operation_request = NATPMPRequest(version, operation, 0, 0, 0, 3600)
     else:
-        operation_request = NATPMPRequest(version, operation, 0, 0, 0, 60, ips)
+        operation_request = NATPMPRequest(version, operation, 0, 0, 0, 3600, ips)
 
     # Init result params
     result_codes = {
@@ -94,8 +138,8 @@ if __name__ == "__main__":
                 result_codes[res_handshake] += 1
                 continue
 
-            server_cert_bytes = res_handshake[12:]
-            nonce = res_handshake[4:12]
+            server_cert_bytes = data_handshake[12:]
+            nonce = data_handshake[4:12]
             # Load the server's cert
             try:
                 server_cert = x509.load_pem_x509_certificate(server_cert_bytes, default_backend())
@@ -135,7 +179,7 @@ if __name__ == "__main__":
     print("\nResponse codes:")
 
     def print_stats_codes(title, key):
-        print("    %s: %d (%.2f%)" % (title, result_codes[key], result_codes[key] / reqs_to_send))
+        print("    %s: %d (%.2f%%)" % (title, result_codes[key], result_codes[key] / reqs_to_send * 100))
 
     print_stats_codes("OK", NATPMP_RESULT_OK)
     print_stats_codes("Version not supported", NATPMP_RESULT_VERSION_NOT_SUPPORTED)
@@ -149,50 +193,6 @@ if __name__ == "__main__":
     print_stats_codes("Timed out", RESULT_TIMED_OUT)
 
     print("\nResponse times:")
-    print("    Average: %.3f ms" % (sum(response_times) / len(response_times)))
-    print("    Max: %.3f ms" % max(response_times))
-    print("    Min: %.3f ms" % min(response_times))
-
-
-def get_namespace():
-    parser = argparse.ArgumentParser(description="NAT-PMP performance meter.")
-
-    parser.add_argument('-v', nargs=1, help="Version of the NAT-PMP protocol to use.", metavar="version", type=int,
-                        default=0)
-    parser.add_argument('-n', nargs=1, help="Number of requests to send.", metavar="count", type=int,
-                        default=1000)
-    parser.add_argument('-t', nargs=1, help="Amount of time (milliseconds) to consider a request as timed out.", metavar="millis", type=int,
-                        default=1000)
-    parser.add_argument('-g', nargs=1, help="Gateway address.", metavar="gateway")
-    parser.add_argument('-op', nargs=1, help="Operation to do against the gateway.", metavar="info/req")
-    parser.add_argument('-ips', nargs='+',
-                        help="When issuing a v1 request, must include the public interfaces to map into.",
-                        metavar="ip_address")
-    parser.add_argument('-sec', nargs=2,
-                        help="Send a secured request with v1, using the selected certificate and private key.",
-                        metavar=('cert_path', 'key_path'), type=argparse.FileType('rb'))
-
-    namespace = parser.parse_args()
-    check_params_ok(namespace)
-    return namespace
-
-
-def check_params_ok(namespace):
-    if not 0 <= namespace.v <= 1:
-        sys.exit("Only version 0 and 1 are currently supported.")
-
-    if namespace.n < 1:
-        sys.exit("Please, provide a request count greater than zero.")
-
-    if namespace.t < 1:
-        sys.exit("Please, provide a timeout amount greater than zero milliseconds.")
-
-    if not namespace.g or not is_valid_ip_string(namespace.g):
-        sys.exit("Please, provide a valid gateway address using the -g flag.")
-
-    if not namespace.op or namespace.op not in ["info", "req"]:
-        sys.exit("Please, provide a valid operation using the -op flag (info/req)")
-
-    if namespace.v == 1:
-        if not namespace.ips or any(not is_valid_ip_string(x) for x in namespace.ips.split()):
-            sys.exit("At least one argument provided by the -ips flag is not a valid IP address.")
+    print("    Average: %.4f s" % (sum(response_times) / len(response_times)))
+    print("    Max: %.4f s" % max(response_times))
+    print("    Min: %.4f s" % min(response_times))
