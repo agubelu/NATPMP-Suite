@@ -1,5 +1,4 @@
 import netifaces
-import sys
 import socket
 import select
 

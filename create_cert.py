@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     if not args or '-h' in args or '--help' in args:
         print("""
-Usage: create-cert.py client_ip lifetime [key_size] [-der]
+Usage: create_cert.py client_ip lifetime [key_size] [-der]
 
     client_ip: The IPv4 address that will be used as the 'subject' for the certificate.
     lifetime: Lifetime for the certificate in seconds, starting when it's created.
