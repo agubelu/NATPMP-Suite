@@ -11,6 +11,7 @@ itsdangerous==0.24
 Jinja2==2.9.6
 MarkupSafe==1.0
 netifaces==0.10.5
+numpy==1.12.1
 packaging==16.8
 pycparser==2.17
 pyparsing==2.2.0

@@ -18,6 +18,7 @@ import socket
 import datetime
 import argparse
 import sys
+import numpy
 
 NATPMP_PORT = 5351
 RESULT_TIMED_OUT = -1
@@ -192,7 +193,16 @@ if __name__ == "__main__":
     print_stats_codes("Bad certificate", NATPMP_RESULT_BAD_CERT)
     print_stats_codes("Timed out", RESULT_TIMED_OUT)
 
+    avg_time = sum(response_times) / len(response_times)
+    median_time = numpy.median(response_times)
+    stdev = numpy.std(response_times)
+    max_time = max(response_times)
+    min_time = min(response_times)
+
     print("\nResponse times:")
-    print("    Average: %.4f s" % (sum(response_times) / len(response_times)))
-    print("    Max: %.4f s" % max(response_times))
-    print("    Min: %.4f s" % min(response_times))
+    print("    Average: %.5f s (%.2f ms)" % (avg_time, avg_time * 1000))
+    print("    Median: %.5f s (%.2f ms)" % (median_time, median_time * 1000))
+    print("    Std. deviation: %.5f s (%.2f ms)" % (stdev, stdev * 1000))
+    print("    Max: %.5f s (%.2f ms)" % (max_time, max_time * 1000))
+    print("    Min: %.5f s (%.2f ms)" % (min_time, min_time * 1000))
+    print("    Requests per second: %.2f (avg)" % (1.0 / avg_time))
