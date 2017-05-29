@@ -327,4 +327,4 @@ def init_web_interface():
 
     # Run the app
     printlog("Web interface up and running at port %s" % interface_port)
-    flask_app.run(port=int(interface_port))
+    flask_app.run(port=int(interface_port), host=settings.PRIVATE_INTERFACES[0])

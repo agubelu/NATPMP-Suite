@@ -14,7 +14,7 @@ def init_tables():
     create_tables()
     flush_tables()
     exec_or_die("nft add chain %s prerouting { type nat hook prerouting priority 0 ; }" % NATPMP_TABLE_NAME)
-    exec_or_die("nft add chain %s postrouting { type nat hook postrouting priority 100 ; masquerade ; }" % NATPMP_TABLE_NAME)
+    exec_or_die("nft add chain %s postrouting { type nat hook postrouting priority 100 ; }" % NATPMP_TABLE_NAME)
 
     printlog("Table '%s' initialized on nftables." % NATPMP_TABLE_NAME)
 
@@ -31,9 +31,11 @@ def add_mapping(public_ip, private_ip, public_port, private_port, proto):
     check_mapping_params(proto, public_ip, private_ip)
     iface_name = get_interface_name(public_ip)
 
-    command = "nft add rule %s prerouting iif %s %s dport %d dnat %s:%d" % (NATPMP_TABLE_NAME, iface_name, proto, public_port, private_ip, private_port)
+    command1 = "nft add rule %s prerouting iif %s %s dport %d dnat %s:%d" % (NATPMP_TABLE_NAME, iface_name, proto, public_port, private_ip, private_port)
+    command2 = "nft add rule %s postrouting ip daddr %s %s dport %d masquerade" % (NATPMP_TABLE_NAME, private_ip, proto, private_port)
     # We've come so far to die here now
-    exec_or_die(command, soft=True)
+    exec_or_die(command1, soft=True)
+    exec_or_die(command2, soft=True)
 
 
 def remove_mapping(public_ip, public_port, proto):
