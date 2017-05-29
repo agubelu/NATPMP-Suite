@@ -1,8 +1,8 @@
 #!/bin/bash
-../natpmp_daemon.py -file > daemon_output.txt 2>&1 &
+./natpmp_daemon.py -file > ./performance_output/daemon_output.txt 2>&1 &
 
 genpid=$!
-outfile=performance_output.txt
+outfile=./performance_output/performance_data.txt
 
 echo $(date "+%F %H:%M:%S") > $outfile
 

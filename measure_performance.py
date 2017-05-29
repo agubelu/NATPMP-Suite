@@ -160,6 +160,12 @@ if __name__ == "__main__":
         data_response, _ = send_and_receive_with_timeout(udp_sock, router_addr, request_bytes, timeout_amount)
         time_end_request = datetime.datetime.now()
 
+        time_elapsed = (time_end_request - time_start_request).total_seconds()
+        if use_tls:
+            time_elapsed += (time_end_handshake - time_start_handshake).total_seconds()
+
+        response_times.append(time_elapsed)
+
         if data_response is None:
             result_codes[RESULT_TIMED_OUT] += 1
             continue
@@ -169,12 +175,6 @@ if __name__ == "__main__":
 
         response_code = int.from_bytes(data_response[2:4], 'big')
         result_codes[response_code] += 1
-
-        time_elapsed = (time_end_request - time_start_request).total_seconds()
-        if use_tls:
-            time_elapsed += (time_end_handshake - time_start_handshake).total_seconds()
-
-        response_times.append(time_elapsed)
 
     print("----------------------------------------------------")
     print("\nResponse codes:")
