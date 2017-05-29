@@ -132,11 +132,13 @@ if __name__ == "__main__":
 
             if data_handshake is None:
                 result_codes[RESULT_TIMED_OUT] += 1
+                response_times.append((time_end_handshake - time_start_handshake).total_seconds())
                 continue
 
             res_handshake = int.from_bytes(data_handshake[2:4], 'big')
             if res_handshake != NATPMP_RESULT_OK:
                 result_codes[res_handshake] += 1
+                response_times.append((time_end_handshake - time_start_handshake).total_seconds())
                 continue
 
             server_cert_bytes = data_handshake[12:]
