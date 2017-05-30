@@ -498,7 +498,7 @@ def create_mapping(ip, port, proto, client, internal_port, lifetime):
 # Removes a mapping from the system
 def remove_mapping(ip, port, proto, reason):
     try:
-        network_management_module.remove_mapping(ip, port, proto.lower())
+        network_management_module.remove_mapping(ip, port, proto.lower(), CURRENT_MAPPINGS[ip][port][proto]['client'], CURRENT_MAPPINGS[ip][port][proto]['internal_port'])
     except ValueError as exc:
         printerr("Error deleting mapping with reason '%s': %s" % (reason, str(exc)))
 

@@ -38,7 +38,7 @@ def add_mapping(public_ip, private_ip, public_port, private_port, proto):
     exec_or_die(command2, soft=True)
 
 
-def remove_mapping(public_ip, public_port, proto):
+def remove_mapping(public_ip, public_port, proto, client, internal_port):
     check_mapping_params(proto, public_ip)
     iface_name = get_interface_name(public_ip)
 
@@ -50,20 +50,24 @@ def remove_mapping(public_ip, public_port, proto):
     except CalledProcessError as e:
         raise ValueError("Command %s returned non-zero error code (%d)" % (list_command, e.returncode))
 
-    regex = 'iif "?%s"? %s dport %d.*# handle (\d*)' % (iface_name, proto, public_port)
+    # Regular expresions to search the handle in both chains
+    regex_prerouting = 'iif "?%s"? %s dport %d.*# handle (\d*)' % (iface_name, proto, public_port)
+    regex_postrouting = 'ip daddr %s %s dport %d masquerade.*# handle (\d*)' % (client, proto, internal_port)
 
+    # Iterate over every line in the output, deleting the handle if it matches any of the regular expresions
     for list_entry in list_output.splitlines():
         entry_stripped = list_entry.decode("utf-8").strip()
-        match = re.search(regex, entry_stripped)
+        match = re.search(regex_prerouting, entry_stripped)
+        chain = "prerouting"
+
+        if not match:
+            match = re.search(regex_postrouting, entry_stripped)
+            chain = "postrouting"
 
         if match:
             handle = match.group(1)
-            remove_command = "nft delete rule %s prerouting handle %s" % (NATPMP_TABLE_NAME, handle)
+            remove_command = "nft delete rule %s %s handle %s" % (NATPMP_TABLE_NAME, chain, handle)
             exec_or_die(remove_command, soft=True)
-            return
-
-    # No rule matched
-    raise ValueError("Mapping removal for %s:%d %s failed: no such mapping" % (public_ip, public_port, proto))
 
 ########################################################################################################################
 
@@ -92,6 +96,7 @@ def get_interface_name(public_address):
                     return iface_name
 
     return False
+
 
 def check_mapping_params(proto=None, public_ip=None, private_ip=None):
 
