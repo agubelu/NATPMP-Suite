@@ -50,7 +50,7 @@ def remove_mapping(public_ip, public_port, proto):
     except CalledProcessError as e:
         raise ValueError("Command %s returned non-zero error code (%d)" % (list_command, e.returncode))
 
-    regex = "iif %s %s dport %d.*# handle (\d*)" % (iface_name, proto, public_port)
+    regex = 'iif "?%s"? %s dport %d.*# handle (\d*)' % (iface_name, proto, public_port)
 
     for list_entry in list_output.splitlines():
         entry_stripped = list_entry.decode("utf-8").strip()
