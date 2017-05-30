@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     # Set the SIGTERM handler, to flush the NAT-PMP table if the daemon is terminated
     def handle_sigterm(signal, frame):
-        printlog("Daemon terminating, flushing NAT-PMP status in nftables...")
+        printlog("Daemon terminating, flushing NAT-PMP mappings in nftables...")
         flush_tables()
         sys.exit(0)
 
@@ -36,9 +36,10 @@ if __name__ == "__main__":
 
     # Init the web interface if required
     if settings.ALLOW_WEB_INTERFACE:
-        flask_thread = threading.Thread(target=web_interface_module.init_web_interface)
-        flask_thread.daemon = True
-        flask_thread.start()
+        for private_iface in settings.PRIVATE_INTERFACES:
+            flask_thread = threading.Thread(target=web_interface_module.init_web_interface, args=(private_iface,))
+            flask_thread.daemon = True
+            flask_thread.start()
 
     # Start the UDP sockets to listen for requests from the clients in an infinite loop
     try:

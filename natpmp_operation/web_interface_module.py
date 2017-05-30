@@ -5,7 +5,7 @@ import settings
 import os
 
 
-def init_web_interface():
+def init_web_interface(host):
 
     flask_app = Flask(__name__, static_folder="webapp/static", template_folder="webapp/templates")
     flask_app.secret_key = os.urandom(16)
@@ -326,5 +326,5 @@ def init_web_interface():
     #########################################################################################################
 
     # Run the app
-    printlog("Web interface up and running at port %s" % interface_port)
-    flask_app.run(port=int(interface_port), host=settings.PRIVATE_INTERFACES[0])
+    printlog("Web interface up and running at %s:%s" % (host, interface_port))
+    flask_app.run(port=int(interface_port), host=host)
