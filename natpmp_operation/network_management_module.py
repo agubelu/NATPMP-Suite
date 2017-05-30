@@ -84,13 +84,14 @@ def get_interface_name(public_address):
 
     ifaces = netifaces.interfaces()
     for iface_name in ifaces:
-        for iface_data in netifaces.ifaddresses(iface_name)[netifaces.AF_INET]:
-            if "addr" in iface_data and iface_data["addr"] == public_address:
-                INTERFACE_NAMES[public_address] = iface_name
-                return iface_name
+        ifaces = netifaces.ifaddresses(iface_name)
+        if netifaces.AF_INET in ifaces:
+            for iface_data in ifaces[netifaces.AF_INET]:
+                if "addr" in iface_data and iface_data["addr"] == public_address:
+                    INTERFACE_NAMES[public_address] = iface_name
+                    return iface_name
 
     return False
-
 
 def check_mapping_params(proto=None, public_ip=None, private_ip=None):
 
