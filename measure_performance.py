@@ -207,4 +207,4 @@ if __name__ == "__main__":
     print("    Std. deviation: %.5f s (%.2f ms)" % (stdev, stdev * 1000))
     print("    Max: %.5f s (%.2f ms)" % (max_time, max_time * 1000))
     print("    Min: %.5f s (%.2f ms)" % (min_time, min_time * 1000))
-    print("    Requests per second: %.2f (avg)" % (1.0 / avg_time))
+    print("    Requests per second: %.2f (med)" % (1.0 / median_time))
